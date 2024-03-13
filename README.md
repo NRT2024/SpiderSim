@@ -14,13 +14,13 @@ SpiderSim offers security simulation modules designed to extend to critical info
 ### Evaluation of Active Defense Efficacy
 SpiderSim provides theoretical-level simulation capabilities to validate new network security active defense technologies theoretically. We have completed experiments to validate the effectiveness of the Shock Trap defense technology. For more detailed information, please refer to our paper (link).
 
-### Environment Setup Guide
+## Environment Setup Guide
 1. Install CyberBattleSim:
    This project is built on CyberBattleSim. Before deploying the project, make sure you have downloaded CyberBattleSim or installed the CyberBattleSim library.
 2. Modify the source code:
    We have modified the source code of CyberBattleSim. Before running the project, do the following:
    - Rename the cyberbattle_env.py file in the CyberBattleSim source code to spidersim_env.py.
-   - To reproduce the experiments in the paper, replace the learner.py file with our modified learner.py file.
+   - To reproduce the experiments in the paper, replace the learner.py file with our modified learners.py file.
 3. Scenario Setup:
    Our code provides various scenarios, such as Smart Ocean Scenario, IoT Scenario, etc. Contact us for scenario deployment guidance.
 
