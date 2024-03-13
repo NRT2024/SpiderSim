@@ -27,7 +27,7 @@ SpiderSim provides theoretical-level simulation capabilities to validate new net
    Our code provides various scenarios, such as Smart Ocean Scenario, IoT Scenario, etc. Contact us for scenario deployment guidance.
 
 <img src="img/img2.jpg" alt="The topology diagram of the smart ocean scene." width="512" height="354">
-<img src="img/img3.png" alt="The diagram of the smart ocean scene." width="534" height="250">
+<img src="img/img3.png" alt="The diagram of the smart ocean scene." width="520" height="241">
 
 ## Evaluation of Network Attack and Defense Efficacy
 1. Create Digital Environment: Abstract actual resources into digital nodes based on the network scenario topology, considering their features such as value and attributes. Use these digital nodes to create a digital twin environment in network simulation tools.
