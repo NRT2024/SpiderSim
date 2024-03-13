@@ -14,6 +14,8 @@ SpiderSim offers security simulation modules designed to extend to critical info
 ### Evaluation of Active Defense Efficacy
 SpiderSim provides theoretical-level simulation capabilities to validate new network security active defense technologies theoretically. We have completed experiments to validate the effectiveness of the Shock Trap defense technology. For more detailed information, please refer to our paper (link).
 
+<img src="img/img1.jpg" alt="SpiderSim" width="635" height="556">
+
 ## Environment Setup Guide
 1. Install CyberBattleSim:
    This project is built on CyberBattleSim. Before deploying the project, make sure you have downloaded CyberBattleSim or installed the CyberBattleSim library.
@@ -23,6 +25,9 @@ SpiderSim provides theoretical-level simulation capabilities to validate new net
    - To reproduce the experiments in the paper, replace the learner.py file with our modified learners.py file.
 3. Scenario Setup:
    Our code provides various scenarios, such as Smart Ocean Scenario, IoT Scenario, etc. Contact us for scenario deployment guidance.
+
+<img src="img/img2.jpg" alt="The topology diagram of the smart ocean scene." width="512" height="354">
+<img src="img/img3.png" alt="The diagram of the smart ocean scene." width="534" height="250">
 
 ## Evaluation of Network Attack and Defense Efficacy
 1. Create Digital Environment: Abstract actual resources into digital nodes based on the network scenario topology, considering their features such as value and attributes. Use these digital nodes to create a digital twin environment in network simulation tools.
@@ -61,6 +66,9 @@ Evaluation Steps:
 The placement of defense techniques is determined by the pre and post-vulnerabilities, with specific locations determined by the vulnerabilities parameter. For example, in the toy_ctf.py code, the placement of honeypots can be set before the AzureStorage node and after the website node. Based on the characteristics of honeypot technology, provide false credentials connecting to the AzureStorage node on the basis of vulnerabilities contained in the honeypot node. After completing this step, the defense technology is deployed.
 
 3. Run the provided notebook_random_dql.ipynb code, which uses random attacker agents and DQL attacker agents. This will generate the honeypot defense effect graph as shown below. Compare the change trends of the curves in the graph based on the cumulative reward on the y-axis and the number of steps on the x-axis to verify the defense effect of the defense technology.
+
+![Rewards accumulated by attackers with different learning methods(Honeypot)](img/img4.png)
+![Rewards accumulated by attackers with different learning methods(Shock Trap)](img/img5.png)
 
 ## Contribution Guidelines
 Thank you for considering contributing to SpiderSim! We welcome all forms of contribution, including bug reports, suggestions, documentation improvements, code submissions, etc. Your contribution helps us improve the project and make it more powerful.
