@@ -83,7 +83,7 @@ If you'd like to contribute code to the project, we greatly appreciate your part
 - Submit a Pull Request to the main project repository.
 Before submitting a Pull Request, please ensure that your code complies with the project's coding standards and includes relevant documentation and tests. We will review your code as soon as possible and communicate any necessary improvements.
 
-### Contact Us
+### Contact US
 If you have any questions or need assistance, please feel free to contact us. You can reach us via the following methods:
 
 - Leave a message on the issues page on GitHub.
