@@ -261,13 +261,12 @@ AI-generated code may contain errors. It is recommended to manually inspect and 
 If you wish to reference SpiderSim in your research, please use the following BibTeX entry:
 
 ```
-@inproceedings{hong2023assessing,
-  title={Assessing the Effectiveness of Deception-Based Cyber Defense with CyberBattleSim},
-  author={Hong, Quan and Li, Jiaqi and Guo, Xizhong and Xie, Pan and Zhai, Lidong},
-  booktitle={International Conference on Digital Forensics and Cyber Crime},
-  pages={224--243},
-  year={2023},
-  organization={Springer}
+@inproceedings{li2022space,
+  title={Space spider: a hyper large scientific infrastructure based on digital twin for the space internet},
+  author={Li, Jiaqi and Zhang, Lvyang and Hong, Quan and Yu, Yang and Zhai, Lidong},
+  booktitle={Proceedings of the 1st Workshop on Digital Twin \& Edge AI for Industrial IoT},
+  pages={31--36},
+  year={2022}
 }
 ```
 
@@ -295,4 +294,4 @@ Thank you for helping us improve SpiderSim!
 If you need assistance, feel free to contact us through the following channels:
 
 - Open an issue on the GitHub Issues page.
-- Send an email to guoxizhong@iie.ac.cn.
+- Send an email to spidersimnrt@gmail.com.
