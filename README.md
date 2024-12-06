@@ -289,6 +289,12 @@ Thank you for helping us improve SpiderSim!
 
 ------
 
+## 🛠️ **Acknowledgments**
+
+- SpiderSim is built on the foundation of Microsoft’s [CyberBattleSim](https://github.com/microsoft/CyberBattleSim). We chose CyberBattleSim as the basis for the early versions of SpiderSim due to its well-structured framework and its suitability for peer review and community collaboration. Thanks to [CyberBattleSim](https://github.com/microsoft/CyberBattleSim).
+
+------
+
 ## 📩 **Contact Us**
 
 If you need assistance, feel free to contact us through the following channels:
