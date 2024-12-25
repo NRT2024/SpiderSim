@@ -1,5 +1,12 @@
 ## 📰 **What’s New in SpiderSim?**
 
+### 🏭 **v0.4: Digital Twin Scenario Library** *(2024-12-24)*
+A newly released Digital Twin Scenario Library, covering industries such as satellite internet, IoT, and smart agriculture.
+
+For code implementation and design details, please refer to the “Simulating Industrial Digitalization Scenarios” and “AI-Powered Scene Generation for Industrial Digitalization Cybersecurity Simulation“ tutorial.
+
+The scenarios are based on our released Satellite Internet Technology Challenge. We welcome more contributors to share their own scenes!
+
 ### 🚀 **v0.3: AI-Powered Scene Automation** *(2024-12-05)*
 
 Introducing **AI-driven scene generation**, enabling automated creation and optimization of industrial digitalization cybersecurity simulation.
@@ -226,7 +233,9 @@ SpiderSim integrates **LLMs** to automate the creation of complex industrial dig
 Here are the steps to generate AI-driven industrial digitalization scenarios, using the **Smart Ocean** scenario as an example:
 
 1. **Prepare the Scene Description**
-   Edit the file `scenarios/smart_ocean_description.txt` to include detailed information about the Smart Ocean scenario. This file serves as the input for scene generation.
+   Edit the file `AI_Scene_Code_Generate/data.txt` to include detailed information about the Smart Ocean scenario. This file serves as the input for scene generation.
+
+   Notice: If the topology of additional scenarios needs to be generated, please include or modify the corresponding scene details accordingly.
 
 2. **Run AI Scene Generation**
    The AI generation code is located in the `AI_Scene_Code_Generate` directory. Configure API keys for the LLM in the `main.py` file or via environment variables, then run:
@@ -238,10 +247,31 @@ Here are the steps to generate AI-driven industrial digitalization scenarios, us
    The generated scene topology will be saved in the `AI_Code/` directory as `AI_Code.json`.
 
 3. **Validate the Generated Scene**
-   Run the following script to validate the generated scene:
+   The following code will read the content of the `AI_Code.json` file and construct the topology of the scene:
 
    ```
    python cyberbattle/samples/AI_Scene/scene.py
+   ```
+
+4. **Instantiate the Scene**
+   Create a new file for scene instantiation, For details, refer to`cyberbattle/_env/cyberbattle_ai.py`, and add the following code to the `cyberbattle/__init__.py` file. You can customize the related parameters as needed:
+
+   ```python
+   if 'CyberBattleAI-v0' in registry.env_specs:
+       del registry.env_specs['CyberBattleAI-v0']
+   
+   register(
+       id='CyberBattleAI-v0',
+       cyberbattle_env_identifiers=scene.ENV_IDENTIFIERS,
+       entry_point='cyberbattle._env.cyberbattle_ai:CyberBattleAI',
+       kwargs={'defender_agent': None,
+               'attacker_goal': AttackerGoal(own_atleast=6),
+               'defender_goal': DefenderGoal(eviction=True),
+               'maximum_total_credentials': 20,
+               'maximum_node_count': 30
+               },
+       max_episode_steps=2600,
+   )
    ```
 
    Additionally, you can use a Jupyter Notebook for further verification:
@@ -249,7 +279,7 @@ Here are the steps to generate AI-driven industrial digitalization scenarios, us
    ```
    python notebooks/toyctf-random.ipynb
    ```
-
+   
 #### **Note**
 
 AI-generated code may contain errors. It is recommended to manually inspect and correct the generated code before integrating it into your project. Alternatively, modify the `scene.py` script to handle generated code manually.
