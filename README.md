@@ -1,12 +1,12 @@
 ## 📰 **What’s New in SpiderSim?**
 
-### 🏭 **v0.4: Digital Twin Scenario Library** *(2024-12-24)*
-A newly released Digital Twin Scenario Library, covering industries such as satellite internet, IoT, and smart agriculture.
+### 🏭 **v0.4: Industrial Digitalization Scenario Library** *(2024-12-24)*
+
+A newly released **Industrial Digitalization Scenario Library**, covering industries such as satellite internet, IoT, and smart agriculture. For details, refer to the `Industrial_Digitalization_Scenario_Library` files.
 
 For code implementation and design details, please refer to the “Simulating Industrial Digitalization Scenarios” and “AI-Powered Scene Generation for Industrial Digitalization Cybersecurity Simulation“ tutorial.
 
 The scenarios are based on our released Satellite Internet Technology Challenge. We welcome more contributors to share their own scenes!
-
 ### 🚀 **v0.3: AI-Powered Scene Automation** *(2024-12-05)*
 
 Introducing **AI-driven scene generation**, enabling automated creation and optimization of industrial digitalization cybersecurity simulation.
@@ -182,6 +182,41 @@ In this definition:
 
 Using the `toy_ctf.py` file, you can simulate a variety of deception-based defense techniques, including honeypots, decoys, and Shock Trap.
 
+#### Instantiate the Gym Environment
+
+First, create a new file `cyberbattle_toyctf.py` in the `cyberbattle/_env` directory and add the following code:
+
+```python
+from ..samples.toyctf import toy_ctf
+from . import cyberbattle_env
+
+class CyberBattleToyCtf(cyberbattle_env.CyberBattleEnv):
+    """CyberBattle simulation based on a toy CTF exercise"""
+
+    def __init__(self, **kwargs):
+        super().__init__(
+            initial_environment=toy_ctf.new_environment(),
+            **kwargs)
+```
+
+Next, add the following code snippet to the `cyberbattle/__init__.py` file:
+
+```python
+if 'CyberBattleToyCtf-v0' in registry.env_specs:
+    del registry.env_specs['CyberBattleToyCtf-v0']
+
+register(
+    id='CyberBattleToyCtf-v0',
+    cyberbattle_env_identifiers=toy_ctf.ENV_IDENTIFIERS,
+    entry_point='cyberbattle._env.cyberbattle_toyctf:CyberBattleToyCtf',
+    kwargs={'defender_agent': None,
+            'attacker_goal': AttackerGoal(own_atleast=6),
+            'defender_goal': DefenderGoal(eviction=True)
+            },
+    # max_episode_steps=2600,
+)
+```
+
 #### **Reproducing Results**
 
 After defining the defense techniques, run the following Jupyter Notebook to reproduce the relevant experimental results:
@@ -220,6 +255,8 @@ For instance, SpiderSim provides a simulation of the **Smart Ocean** scenario. R
 
 3. Set the `gym_env` parameter to `'CyberBattleSea-v0'` and execute the notebook to build the scenario.
 
+Note：The Gym environment instantiation for the Smart Ocean scene has already been completed in the project. For detailed code, refer to `cyberbattle/_env/cyberbattle_smartsea.py` and `cyberbattle/__init__.py` files.
+
 ------
 
 ### 3. **AI-Powered Scene Generation for Industrial Digitalization Cybersecurity Simulation**
@@ -235,7 +272,7 @@ Here are the steps to generate AI-driven industrial digitalization scenarios, us
 1. **Prepare the Scene Description**
    Edit the file `AI_Scene_Code_Generate/data.txt` to include detailed information about the Smart Ocean scenario. This file serves as the input for scene generation.
 
-   Notice: If the topology of additional scenarios needs to be generated, please include or modify the corresponding scene details accordingly.
+   Notice: If the topology of additional scenarios needs to be generated, please ensure that the corresponding scene details are included or modified accordingly. You can refer to the format in the `Industrial_Digitalization_Scenario_Library` files for consistency.
 
 2. **Run AI Scene Generation**
    The AI generation code is located in the `AI_Scene_Code_Generate` directory. Configure API keys for the LLM in the `main.py` file or via environment variables, then run:
@@ -253,32 +290,10 @@ Here are the steps to generate AI-driven industrial digitalization scenarios, us
    python cyberbattle/samples/AI_Scene/scene.py
    ```
 
-4. **Instantiate the Scene**
-   Create a new file for scene instantiation, For details, refer to`cyberbattle/_env/cyberbattle_ai.py`, and add the following code to the `cyberbattle/__init__.py` file. You can customize the related parameters as needed:
-
-   ```python
-   if 'CyberBattleAI-v0' in registry.env_specs:
-       del registry.env_specs['CyberBattleAI-v0']
+4. **Instantiate the Gym Environment**
+   You can refer to the “Instantiate the Gym Environment” section in *Evaluating the Effectiveness of Deception-Based Cyber Defense* for a detailed guide on how to instantiate the environment.
    
-   register(
-       id='CyberBattleAI-v0',
-       cyberbattle_env_identifiers=scene.ENV_IDENTIFIERS,
-       entry_point='cyberbattle._env.cyberbattle_ai:CyberBattleAI',
-       kwargs={'defender_agent': None,
-               'attacker_goal': AttackerGoal(own_atleast=6),
-               'defender_goal': DefenderGoal(eviction=True),
-               'maximum_total_credentials': 20,
-               'maximum_node_count': 30
-               },
-       max_episode_steps=2600,
-   )
-   ```
-
-   Additionally, you can use a Jupyter Notebook for further verification:
-
-   ```
-   python notebooks/toyctf-random.ipynb
-   ```
+   This guide provides step-by-step instructions and code examples to help you set up the Gym environment in your project.
    
 #### **Note**
 
