@@ -111,7 +111,7 @@ Note: AI-generated code may contain errors. It is recommended to manually inspec
 
 ### Note
 
-The tutorial above provides instructions on running our DAMO project. For more detailed information about the project, please refer to the [comprehensive tutorial]((/img/detailintro.md) ). 
+The tutorial above provides instructions on running our DAMO project. For more detailed information about the project, please refer to the [comprehensive tutorial](/img/detailintro.md). 
 
 ------
 
