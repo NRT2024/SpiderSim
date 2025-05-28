@@ -75,8 +75,6 @@ Launched the platform with support for evaluating deception-based defense techni
 
 ## 📖 **Functional Overview**
 
-## 📖 **Functional Overview**
-
 ### 1. **Evaluating the Effectiveness of Deception-Based Cyber Defense**
 
 We have defined honeypot spoofing technology in our code.
