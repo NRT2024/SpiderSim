@@ -1,3 +1,10 @@
+# SpiderSim - A Network Attack Simulation Environment
+# Copyright (c) 2024 NRT
+
+# This project includes code modified from CyberBattle 
+# (https://github.com/microsoft/CyberBattleSim/tree/main/cyberbattle) used under Licensed under the MIT License.
+
+
 """Space flattening wrappers fro the CyberBattleEnv gym environment.
 """
 from collections import OrderedDict

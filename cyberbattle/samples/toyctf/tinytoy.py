@@ -1,5 +1,9 @@
-# Copyright (c) Microsoft Corporation.
-# Licensed under the MIT License.
+# SpiderSim - A Network Attack Simulation Environment
+# Copyright (c) 2024 NRT
+
+# This project includes code modified from CyberBattle 
+# (https://github.com/microsoft/CyberBattleSim/tree/main/cyberbattle) used under Licensed under the MIT License.
+
 
 """A tiny toy environment"""
 
@@ -48,24 +52,66 @@ nodes = {
         properties=["CLIENT:Win10"],
         value=0,
         vulnerabilities=dict(
-            SearchEdgeHistory=m.VulnerabilityInfo(
-                description="Search web history for list of accessed websites",
+            SearchComputeServer = m.VulnerabilityInfo(
+                description="Search ComputeServer for list of accessed servers",
                 type=m.VulnerabilityType.LOCAL,
-                outcome=m.LeakedNodesId(["Website"]),
-                reward_string="Web browser history revealed website URL of interest",
-                cost=1.0,
-            )
-        ),
+                outcome=m.LeakedCredentials(credentials=[
+                    m.CachedCredential(node="ComputeServer", port="SSH",
+                         credential="ServerCredential")]),
+                reward_string="Find the entrance to the ComputeServer",
+                cost=1.0
+            )),
         agent_installed=True,
         reimagable=False,
+    ),
+    'ComputeServer': m.NodeInfo(
+        services=[m.ListeningService("SSH", allowedCredentials=["ServerCredential"])],
+        value=1000,
+        properties=["Linux", "ComputeNode", "GPU"],
+        vulnerabilities=dict(
+            MiningVuln=m.VulnerabilityInfo(
+                description="一个允许劫持算力资源的漏洞",
+                type=m.VulnerabilityType.COMPUTATION_LEAK,
+                precondition=m.Precondition('ComputeNode&GPU'),
+                outcome=m.ComputationResourcesLeaked(
+                    computation_resources=["gpu", "cpu"],
+                    amount=10.0
+                ),
+                reward_string="成功劫持计算资源",
+                cost=2.0,
+            )
+        )
     ),
 }
 
 global_vulnerability_library: Dict[VulnerabilityID, VulnerabilityInfo] = dict([])
+
 
 # Environment constants
 ENV_IDENTIFIERS = m.infer_constants_from_nodes(cast(Iterator[Tuple[NodeID, NodeInfo]], list(nodes.items())), global_vulnerability_library)
 
 
 def new_environment() -> m.Environment:
-    return m.Environment(network=m.create_network(nodes), vulnerability_library=global_vulnerability_library, identifiers=ENV_IDENTIFIERS)
+    network_state = m.NetworkState()
+    network_state.computation_resources = {
+        "gpu": m.ComputationResource(
+            id="gpu", 
+            total_amount=100.0, 
+            current_amount=100.0, 
+            value_per_unit=0.5
+        ),
+        "cpu": m.ComputationResource(
+            id="cpu", 
+            total_amount=200.0, 
+            current_amount=200.0, 
+            value_per_unit=0.2
+        )
+    }
+    network_state.hijacked_computation = {}
+    
+    return m.Environment(
+        network=m.create_network(nodes),
+        vulnerability_library=global_vulnerability_library,
+        identifiers=ENV_IDENTIFIERS,
+        network_state=network_state
+    )

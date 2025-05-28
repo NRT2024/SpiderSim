@@ -1,8 +1,8 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT License.
 
-"""Anatares OpenGym Environment"""
 
+"""Anatares OpenGym 环境实现：网络攻击模拟的强化学习环境"""
 
 import time
 import copy
@@ -24,118 +24,71 @@ from cyberbattle.simulation.model import PortName, PrivilegeLevel
 from ..simulation import commandcontrol, model, actions
 from .discriminatedunion import DiscriminatedUnion
 
-
 LOGGER = logging.getLogger(__name__)
 
-# Used to allocate a discrete space value representing a field that
-# is 'Not Applicable' (of value 0 by convention)
-NA = 1
-
-# Value defining an unused space slot
-UNUSED_SLOT = numpy.int32(0)
-# Value defining a used space slot
-USED_SLOT = numpy.int32(1)
+# ------------------------- 常量定义 -------------------------
+NA = 1  # 用于表示离散空间中'不适用'的默认值
+UNUSED_SLOT = numpy.int32(0)  # 表示空间槽位未使用
+USED_SLOT = numpy.int32(1)    # 表示空间槽位已使用
 
 
-# Action Space dictionary type
-# The actual action space is later defined as a 'spaces.Dict(x)' where x:ActionSpaceDict
+# ------------------------- 类型定义 -------------------------
+# 动作空间字典类型（用于定义Gym动作空间）
 ActionSpaceDict = TypedDict(
-    'ActionSpaceDict', {'local_vulnerability': spaces.Space,  # type: ignore
-                        'remote_vulnerability': spaces.Space,  # type: ignore
-                        'connect': spaces.Space  # type: ignore
-                        })
+    'ActionSpaceDict', {
+        'local_vulnerability': spaces.Space,   # 本地漏洞利用动作空间
+        'remote_vulnerability': spaces.Space,  # 远程漏洞利用动作空间 
+        'connect': spaces.Space                # 连接动作空间
+    })
 
-# The type of a sample from the Action space
+# 动作样本类型
 Action = TypedDict(
-    'Action', {'local_vulnerability': numpy.ndarray,
-               # adding the generic type causes runtime
-               # TypeError `'type' object is not subscriptable'`
-               'remote_vulnerability': numpy.ndarray,
-               'connect': numpy.ndarray
-               }, total=False)
+    'Action', {
+        'local_vulnerability': numpy.ndarray,   # 本地攻击：[源节点索引, 漏洞索引]
+        'remote_vulnerability': numpy.ndarray,  # 远程攻击：[源节点, 目标节点, 漏洞索引]
+        'connect': numpy.ndarray                # 连接：[源节点, 目标节点, 端口索引, 凭据索引]
+    }, total=False)
 
-# Type of a sample from the ActionMask space
+# 来自 ActionMask 空间的样本类型
 ActionMask = TypedDict(
-    'ActionMask', {'local_vulnerability': numpy.ndarray,
-                   'remote_vulnerability': numpy.ndarray,
-                   'connect': numpy.ndarray
-                   })
-
-# Type of a sample from the Observation space
+    "ActionMask",
+    {
+        "local_vulnerability": numpy.ndarray,
+        "remote_vulnerability": numpy.ndarray,
+        "connect": numpy.ndarray,
+    },
+)
+# 观察空间类型（包含环境状态的所有信息）
 Observation = TypedDict(
     'Observation', {
-
-        # ---------------------------------------------------------
-        # Outcome of the action just executed
-        # ---------------------------------------------------------
-
-        # number of new nodes discovered
+        # 新增发现的节点数量
         'newly_discovered_nodes_count': numpy.int32,
-
-        # whether a lateral move was just performed
+        # 是否成功横向移动
         'lateral_move': numpy.int32,
-
-        # whether customer data were just discovered
+        # 是否发现客户数据
         'customer_data_found': Tuple[numpy.int32],
-
-        # 0 if there were no probing attempt
-        # 1 if an attempted probing failed
-        # 2 if an attempted probing succeeded
+        # 探测结果（0-未尝试，1-失败，2-成功）
         'probe_result': numpy.int32,
-
-        # whether an escalation was completed and to which level
+        # 权限提升结果
         'escalation': numpy.int32,
-
-        # credentials that were just discovered after executing an action
-        'leaked_credentials': Tuple[numpy.ndarray, ...],  # type: ignore
-
-        # bitmask indicating which action are valid in the current state
+        # 泄露的凭据列表（每个元素为[是否使用, 凭据ID, 目标节点, 端口]）
+        'leaked_credentials': Tuple[numpy.ndarray, ...],
+        # 当前有效动作掩码
         'action_mask': ActionMask,
-
-        # ---------------------------------------------------------
-        # State information aggregated over all actions executed so far
-        # ---------------------------------------------------------
-
-        # size of the credential stack (number of tuples in `credential_cache_matrix` that are not zeros)
+        # 凭据缓存当前长度
         'credential_cache_length': int,
-
-        # total nodes discovered so far
+        # 已发现节点总数
         'discovered_node_count': int,
-
-        # Matrix of properties for all the discovered nodes
+        # 节点属性矩阵（每个节点对应一个属性向量）
         'discovered_nodes_properties': Tuple[numpy.ndarray, ...],
-
-        # Node privilege level on every discovered node (e.g., 0 if not owned, 1 owned, 2  admin, 3 for system)
+        # 节点权限等级数组
         'nodes_privilegelevel': numpy.ndarray,
-
-        # Tuple encoding of the credential cache matrix.
-        # It consists of `bounds.maximum_total_credentials` tuples
-        # of numpy array of shape (2)
-        # where only the first `credential_cache_length` tuples are populated.
-        #
-        # Each tuple represent a discovered credential,
-        # the credential index is given by its tuple index (i.e., order of discovery)
-        # Each tuple is of the form: (target_node_discover_index, port_index)
+        # 凭据缓存矩阵（每个凭据对应[目标节点索引, 端口索引]）
         'credential_cache_matrix': Tuple[numpy.ndarray, ...],
-
-        # ---------------------------------------------------------
-        # Raw information fields coming from the simulation environment
-        # that are not encoded as gym spaces (were previously in the 'info' field)
-        # ---------------------------------------------------------
-
-        # internal IDs of the credentials in the cache
-        '_credential_cache': List[model.CachedCredential],
-
-        # Mapping node index to internal IDs of all nodes discovered so far.
-        # The external node index used by the agent to refer to a node
-        # is defined as the index of the node in this array
-        '_discovered_nodes': List[model.NodeID],
-
-        # The subgraph of nodes discovered so far with annotated edges
-        # representing interactions that took place during the simulation. (See
-        # actions.EdgeAnnotation)
-        '_explored_network': networkx.DiGraph
-
+        # 原始数据（不在Gym观察空间中的内部信息）
+        '_credential_cache': List[model.CachedCredential],  # 凭据缓存内部表示
+        '_discovered_nodes': List[model.NodeID],            # 已发现节点ID列表
+        '_explored_network': networkx.DiGraph                # 已探索的网络图
     })
 
 
@@ -187,17 +140,14 @@ def sourcenode_of_action(x: Action) -> int:
 
 
 class EnvironmentBounds(NamedTuple):
-    """Define global bounds posisibly shared by a set of CyberBattle gym environments
-
-    maximum_node_count            - Maximum number of nodes in a given network
-    maximum_total_credentials     - Maximum number of credentials in a given network
-    maximum_discoverable_credentials_per_action - Maximum number of credentials
-                                                    that can be returned at a time by any action
-
-    port_count            - Unique protocol ports
-    property_count        - Unique node property names
-    local_attacks_count   - Unique local vulnerabilities
-    remote_attacks_count  - Unique remote vulnerabilities
+    """定义环境资源边界
+    Attributes:
+        maximum_node_count: 最大节点数
+        maximum_total_credentials: 最大凭据数
+        port_count: 端口类型数量
+        property_count: 节点属性类型数量
+        local_attacks_count: 本地漏洞类型数量
+        remote_attacks_count: 远程漏洞类型数量
     """
     maximum_total_credentials: int
     maximum_node_count: int
@@ -229,9 +179,8 @@ class EnvironmentBounds(NamedTuple):
 
 
 class AttackerGoal(NamedTuple):
-    """Define conditions to be simultanesouly met for the attacker to win.
-    If field values are not specified the default is to target full ownership
-    of the network nodes.
+    """定义攻击者获胜需要同时满足的条件。
+    如果未指定字段值，则默认目标是完全控制网络节点。
     """
     # Include goal to reach at least the specifed cumulative total reward after
     reward: float = 0.0
@@ -245,48 +194,47 @@ class AttackerGoal(NamedTuple):
 
 
 class DefenderGoal(NamedTuple):
-    """Define conditions to be simultanesouly met for the defender to win."""
-    # Met if attacker is evicted from all the network nodes
+    """定义防御者获胜需要同时满足的条件。"""
+    # 如果攻击者被驱逐出所有网络节点，则满足条件。
     eviction: bool
 
 
 class DefenderConstraint(NamedTuple):
-    """Define constraints to be maintained by the defender at all time."""
+    """定义防御者必须始终保持的约束。"""
     maintain_sla: float
 
-
 class CyberBattleEnv(gym.Env):
-    """OpenAI Gym environment interface to the CyberBattle simulation.
+    """OpenAI Gym 环境接口，用于 CyberBattle 仿真。
 
-    # Actions
+    # 动作
 
-        Run a local attack:            `(source_node x local_vulnerability_to_exploit)`
-        Run a remote attack command:   `(source_node x target_node x remote_vulnerability_to_exploit)`
-        Connect to a remote node:      `(source_node x target_node x target_port x credential_index_from_cache)`
+        执行本地攻击:               `(source_node x local_vulnerability_to_exploit)`
+        执行远程攻击命令:           `(source_node x target_node x remote_vulnerability_to_exploit)`
+        连接到远程节点:             `(source_node x target_node x target_port x credential_index_from_cache)`
 
-    # Observation
+    # 观察
 
-       See type `Observation` for a full description of the observation space.
-       It includes:
-       - How many new nodes were discovered
-       - Whether lateral move succeeded
-       - Whether customer data were found
-       - Whehter escalation attempt succeeded
-       - Matrix of all node properties discovered so far
-       - List of leaked credentials
+       请参见 `Observation` 类型，获取完整的观察空间描述。
+       包括：
+       - 发现了多少个新节点
+       - 横向移动是否成功
+       - 是否发现了客户数据
+       - 升级尝试是否成功
+       - 到目前为止发现的所有节点属性矩阵
+       - 泄露的凭证列表
 
-    # Information
-       - Action mask indicating the subset of valid actions at the current state
+    # 信息
+       - 动作掩码，指示当前状态下有效动作的子集
 
-    # Termination
+    # 终止条件
 
-    The simulation ends if either the attacker reaches its goal (e.g. full network ownership),
-    the defender reaches its goal (e.g. full eviction of the attacker)
-    or if one of the defender's constraints is not met (e.g. SLA).
+    如果攻击者达到其目标（例如，完全控制网络），
+    或防御者达到其目标（例如，完全驱逐攻击者），
+    或防御者的某个约束未满足（例如，SLA），则仿真结束。
     """
 
-    metadata = {'render.modes': ['human']}
 
+    metadata = {'render.modes': ['human']}
     @property
     def environment(self) -> model.Environment:
         return self.__environment
@@ -322,8 +270,7 @@ class CyberBattleEnv(gym.Env):
         return self.__bounds
 
     def validate_environment(self, environment: model.Environment):
-        """Validate that the size of the network and associated constants fits within
-        the dimensions bounds set for the CyberBattle gym environment"""
+        """验证网络的大小和相关常量是否符合为CyberBattle gym环境设置的尺寸范围。"""
         assert environment.identifiers.ports
         assert environment.identifiers.properties
         assert environment.identifiers.local_vulnerabilities
@@ -399,22 +346,20 @@ class CyberBattleEnv(gym.Env):
                  observation_padding=False,
                  throws_on_invalid_actions=True,
                  ):
-        """Arguments
+        """参数
         ===========
-        environment               - The CyberBattle network simulation environment
-        maximum_total_credentials - Maximum total number of credentials used in a network
-        maximum_node_count        - Largest possible size of the network
-        maximum_discoverable_credentials_per_action - Maximum number of credentials returned by a given action
-        attacker_goal             - Target goal for the attacker to win and stop the simulation.
-        defender_goal             - Target goal for the defender to win and stop the simulation.
-        defender_constraint       - Constraint to be maintain by the defender to keep the simulation running.
-        winning_reward            - Reward granted to the attacker if the simulation ends because the attacker's goal is reached.
-        losing_reward             - Reward granted to the attacker if the simulation ends because the Defender's goal is reached.
-        renderer                  - the matplotlib renderer (e.g. 'png')
-        observation_padding       - whether to padd all the observation fields to their maximum size. For instance this will pad the credential matrix
-                                    to fit in `maximum_node_count` rows. Turn on this flag for gym agent that expects observations of fixed sizes.
-        throws_on_invalid_actions - whether to raise an exception if the step function attempts an invalid action (e.g., running an attack from a node that's not owned)
-                                    if set to False a negative reward is returned instead.
+        environment               - CyberBattle 网络模拟环境
+        maximum_total_credentials - 网络中使用的最大凭证总数
+        maximum_node_count        - 网络的最大可能节点数
+        maximum_discoverable_credentials_per_action - 每个动作返回的最大凭证数量
+        attacker_goal             - 攻击者胜利并停止模拟的目标
+        defender_goal             - 防御者胜利并停止模拟的目标
+        defender_constraint       - 防御者必须维持的约束，以保持模拟运行
+        winning_reward            - 如果模拟因攻击者达到目标而结束，攻击者将获得的奖励
+        losing_reward             - 如果模拟因防御者达到目标而结束，攻击者将获得的奖励
+        renderer                  - matplotlib 渲染器（例如 'png'）
+        observation_padding       - 是否将所有观察字段填充到最大大小。例如，这将填充凭证矩阵以适应 `maximum_node_count` 行。对于期望固定大小观察的gym代理，启用此标志。
+        throws_on_invalid_actions - 如果步骤函数尝试无效的操作（例如，从未拥有的节点发起攻击），是否引发异常。如果设置为 False，则返回负奖励。
         """
 
         # maximum number of entities in a given environment
@@ -467,7 +412,7 @@ class CyberBattleEnv(gym.Env):
 
         self.action_space = DiscriminatedUnion(cast(dict, action_spaces))  # type: ignore
 
-        # The observation space returning the outcome of each possible action
+        # 观察空间返回每个可能动作的结果
         self.observation_space = spaces.Dict({
             # how many new nodes were discovered
             'newly_discovered_nodes_count': spaces.Discrete(NA + maximum_node_count),
@@ -550,28 +495,26 @@ class CyberBattleEnv(gym.Env):
         self.reward_range = (-float('inf'), float('inf'))
 
     def __index_to_local_vulnerabilityid(self, vulnerability_index: int) -> model.VulnerabilityID:
-        """Return the local vulnerability identifier from its internal encoding index"""
+        """根据内部编码索引返回本地漏洞标识符"""
         return self.__initial_environment.identifiers.local_vulnerabilities[vulnerability_index]
 
     def __index_to_remote_vulnerabilityid(self, vulnerability_index: int) -> model.VulnerabilityID:
-        """Return the remote vulnerability identifier from its internal encoding index"""
+        """根据内部编码索引返回远程漏洞标识符"""
         return self.__initial_environment.identifiers.remote_vulnerabilities[vulnerability_index]
 
     def __index_to_port_name(self, port_index: int) -> model.PortName:
-        """Return the port name identifier from its internal encoding index"""
+        """根据内部编码索引返回端口名称标识符"""
         return self.__initial_environment.identifiers.ports[port_index]
 
     def __portname_to_index(self, port_name: PortName) -> int:
-        """Return the internal encoding index of a given port name"""
+        """返回给定端口名称的内部编码索引"""
         return self.__initial_environment.identifiers.ports.index(port_name)
 
     def __internal_node_id_from_external_node_index(self, node_external_index: int) -> model.NodeID:
-        """"Return the internal environment node ID corresponding to the specified
-        external node index that is exposed to the Gym agent
-                0 -> ID of inital node
-                1 -> ID of first discovered node
+        """返回与指定外部节点索引对应的内部环境节点ID，该索引对Gym代理暴露
+                0 -> 初始节点的ID
+                1 -> 第一个发现的节点的ID
                 ...
-
         """
         # Ensures that the specified node is known by the agent
         if node_external_index < 0:
@@ -586,7 +529,7 @@ class CyberBattleEnv(gym.Env):
         return node_id
 
     def __find_external_index(self, node_id: model.NodeID) -> int:
-        """Find the external index associated with the specified node ID"""
+        """找到与指定节点ID关联的外部索引"""
         return self.__discovered_nodes.index(node_id)
 
     def __agent_owns_node(self, node_id: model.NodeID) -> bool:
@@ -595,8 +538,7 @@ class CyberBattleEnv(gym.Env):
         return pwned
 
     def apply_mask(self, action: Action, mask: Optional[ActionMask] = None) -> bool:
-        """Apply the action mask to a specific action. Returns true just if the action
-        is permitted."""
+        """将动作掩码应用于特定动作。仅当该动作被允许时返回true。"""
         if mask is None:
             mask = self.compute_action_mask()
         field_name = DiscriminatedUnion.kind(action)
@@ -604,7 +546,7 @@ class CyberBattleEnv(gym.Env):
         return bool(field_mask[tuple(coordinates)])
 
     def __get_blank_action_mask(self) -> ActionMask:
-        """Return a blank action mask"""
+        """返回一个空的动作掩码"""
         max_node_count = self.bounds.maximum_node_count
         local_vulnerabilities_count = self.__bounds.local_attacks_count
         remote_vulnerabilities_count = self.__bounds.remote_attacks_count
@@ -622,7 +564,7 @@ class CyberBattleEnv(gym.Env):
         )
 
     def __update_action_mask(self, bitmask: ActionMask) -> None:
-        """Update an action mask based on the current state"""
+        """根据当前状态更新动作掩码"""
         local_vulnerabilities_count = self.__bounds.local_attacks_count
         remote_vulnerabilities_count = self.__bounds.remote_attacks_count
         port_count = self.__bounds.port_count
@@ -635,7 +577,7 @@ class CyberBattleEnv(gym.Env):
             if self.__agent_owns_node(source_node_id):
                 source_index = self.__find_external_index(source_node_id)
 
-                # Local: since the agent owns the node, all its local vulnerabilities are visible to it
+                # 本地：由于代理拥有该节点，因此它可以看到所有本地漏洞
                 for vulnerability_index in range(local_vulnerabilities_count):
                     vulnerability_id = self.__index_to_local_vulnerabilityid(vulnerability_index)
                     node_vulnerable = vulnerability_id in self.__environment.vulnerability_library or \
@@ -645,28 +587,28 @@ class CyberBattleEnv(gym.Env):
                     if node_vulnerable:
                         bitmask["local_vulnerability"][source_index, vulnerability_index] = 1
 
-                # Remote: Any other node discovered so far is a potential remote target
+                # 远程：到目前为止发现的任何其他节点都是潜在的远程目标
                 for target_node_id in self.__discovered_nodes:
                     target_index = self.__find_external_index(target_node_id)
                     bitmask["remote_vulnerability"][source_index,
                                                     target_index,
                                                     :remote_vulnerabilities_count] = 1
 
-                    # the agent may attempt to connect to any port
-                    # and use any credential from its cache (though it's not guaranteed to succeed)
+                    # 代理可以尝试连接到任何端口
+                    # 并使用其缓存中的任何凭证（尽管不能保证成功）
                     bitmask["connect"][source_index,
                                        target_index,
                                        :port_count,
                                        :len(self.__credential_cache)] = 1
 
     def compute_action_mask(self) -> ActionMask:
-        """Compute the action mask for the current state"""
+        """计算当前状态下的动作掩码"""
         bitmask = self.__get_blank_action_mask()
         self.__update_action_mask(bitmask)
         return bitmask
 
     def pretty_print_internal_action(self, action: Action) -> str:
-        """Pretty print an action with internal node and vulnerability identifiers"""
+        """以漂亮的格式打印带有内部节点和漏洞标识符的动作"""
         assert 1 == len(action.keys())
         assert DiscriminatedUnion.kind(action) != ''
         if "local_vulnerability" in action:
@@ -688,7 +630,7 @@ class CyberBattleEnv(gym.Env):
         raise ValueError("Invalid discriminated union value: " + str(action))
 
     def __execute_action(self, action: Action) -> actions.ActionResult:
-        # Assert that the specified action is consistent (i.e., defining a single action type)
+        # 断言指定的动作是一致的（即定义了单一的动作类型）
         assert 1 == len(action.keys())
 
         assert DiscriminatedUnion.kind(action) != ''
@@ -749,8 +691,8 @@ class CyberBattleEnv(gym.Env):
 
             nodes_privilegelevel=numpy.zeros((self.bounds.maximum_node_count,), dtype=numpy.int32),
 
-            # raw data not actually encoded as a proper gym numeric space
-            # (were previously returned in the 'info' dict)
+            # 原始数据实际上并没有被编码为合适的gym数值空间
+            # （之前是通过 'info' 字典返回的）
             _credential_cache=self.__credential_cache,
             _discovered_nodes=self.__discovered_nodes,
             _explored_network=self.__get_explored_network()
@@ -759,8 +701,7 @@ class CyberBattleEnv(gym.Env):
         return observation
 
     def __pad_array_if_requested(self, o, pad_value, desired_length) -> numpy.ndarray:
-        """Pad an array observation with provided padding if the padding option is enabled
-        for this environment"""
+        """如果为此环境启用了填充选项，则使用提供的填充对数组观察进行填充"""
         if self.__observation_padding:
             padding = numpy.full((desired_length - len(o)), pad_value, dtype=numpy.int32)
             return numpy.concatenate((o, padding))
@@ -768,8 +709,7 @@ class CyberBattleEnv(gym.Env):
             return o
 
     def __pad_tuple_if_requested(self, o, row_shape, desired_length) -> Tuple[numpy.ndarray, ...]:
-        """Pad a tuple observation with provided padding if the padding option is enabled
-        for this environment"""
+        """如果为此环境启用了填充选项，则使用提供的填充对元组观察进行填充"""
         if self.__observation_padding:
             padding = [numpy.zeros(row_shape, dtype=numpy.int32)] * (desired_length - len(o))
             return tuple(o + padding)
@@ -777,35 +717,34 @@ class CyberBattleEnv(gym.Env):
             return tuple(o)
 
     def __property_vector(self, node_id: model.NodeID, node_info: model.NodeInfo) -> numpy.ndarray:
-        """Property vector for specified node
-        each cell is either 1 if the property is set, 0 if unset, and 2 if unknown (node is not owned by the agent yet)
-        """
+        """指定节点的属性向量
+        每个单元格的值为 1 表示属性已设置，0 表示未设置，2 表示未知（节点尚未被代理拥有）"""
         properties_indices = list(self._actuator.get_discovered_properties(node_id))
 
         is_owned = self._actuator.get_node_privilegelevel(node_id) >= PrivilegeLevel.LocalUser
 
         if is_owned:
-            # if the node is owned then we know all its properties
+            # 如果节点已被拥有，则我们知道它的所有属性
             vector = numpy.full((self.__bounds.property_count), 0, dtype=numpy.int32)
         else:
-            # otherwise we don't know anything about not discovered properties => 0 should be the default value
+            # 否则，我们对未发现的属性一无所知 => 0 应该是默认值
             vector = numpy.zeros((self.__bounds.property_count), dtype=numpy.int32)
 
         vector[properties_indices] = 1
         return vector
 
     def __get_property_matrix(self) -> Tuple[numpy.ndarray, ...]:
-        """Return the Node-Property matrix,
-        where  0 means the property is not set for that node
-               1 means the property is set for that node
-               2 means the property status is unknown
+        """返回节点-属性矩阵，
+        其中 0 表示该节点的属性未设置
+               1 表示该节点的属性已设置
+               2 表示该属性状态未知
 
-        e.g.: [ 1 0 0 1 ]
+        例如： [ 1 0 0 1 ]
                 2 2 2 2
                 0 1 0 1 ]
-         1st row: set and unset properties for the 1st discovered and owned node
-         2nd row: no known properties for the 2nd discovered node
-         3rd row: properties of 3rd discovered and owned node"""
+         第1行：第1个已发现且拥有的节点的设置和未设置属性
+         第2行：第2个已发现的节点没有已知属性
+         第3行：第3个已发现且拥有的节点的属性"""
         property_discovered = [
             self.__property_vector(node_id, node_info)
             for node_id, node_info in self._actuator.discovered_nodes()
@@ -813,7 +752,7 @@ class CyberBattleEnv(gym.Env):
         return self.__pad_tuple_if_requested(property_discovered, self.__bounds.property_count, self.__bounds.maximum_node_count)
 
     def __get__owned_nodes_indices(self) -> List[int]:
-        """Get list of indices of all owned nodes"""
+        """获取所有已拥有节点的索引列表"""
         if self.__owned_nodes_indices_cache is None:
             owned_nodeids = self._actuator.get_nodes_with_atleast_privilegelevel(PrivilegeLevel.LocalUser)
             self.__owned_nodes_indices_cache = [self.__find_external_index(n) for n in owned_nodeids]
@@ -821,12 +760,12 @@ class CyberBattleEnv(gym.Env):
         return self.__owned_nodes_indices_cache
 
     def __get_privilegelevel_array(self) -> numpy.ndarray:
-        """Return the node escalation level array,
-        where  0 means that the node is not owned
-               1 if the node is owned
-               2 if the node is owned and escalated to admin
-               3 if the node is owned and escalated to SYSTEM
-               ... further escalation levels defined by the network
+        """返回节点升级级别数组，
+        其中 0 表示节点未被拥有
+               1 表示节点已被拥有
+               2 表示节点已被拥有并提升为管理员
+               3 表示节点已被拥有并提升为系统级别
+               ... 网络定义的进一步升级级别
         """
         privilegelevel_array = numpy.array([
             int(self._actuator.get_node_privilegelevel(node))
@@ -839,7 +778,7 @@ class CyberBattleEnv(gym.Env):
         outcome = result.outcome
 
         if isinstance(outcome, model.LeakedNodesId):
-            # update discovered nodes
+            # 更新已发现的节点
             newly_discovered_nodes_count = 0
             for node in outcome.nodes:
                 if node not in self.__discovered_nodes:
@@ -849,7 +788,7 @@ class CyberBattleEnv(gym.Env):
             obs['newly_discovered_nodes_count'] = numpy.int32(newly_discovered_nodes_count)
 
         elif isinstance(outcome, model.LeakedCredentials):
-            # update discovered nodes and credentials
+            # 更新已发现的节点和凭证
             newly_discovered_nodes_count = 0
             newly_discovered_creds: List[Tuple[int, model.CachedCredential]] = []
             for cached_credential in outcome.credentials:
@@ -864,7 +803,7 @@ class CyberBattleEnv(gym.Env):
 
             obs['newly_discovered_nodes_count'] = numpy.int32(newly_discovered_nodes_count)
 
-            # Encode the returned credentials in the format expected by the gym agent
+            # 将返回的凭证编码为gym代理预期的格式
             leaked_credentials = [numpy.array([USED_SLOT,
                                                cache_index,
                                                self.__find_external_index(cached_credential.node),
@@ -902,10 +841,7 @@ class CyberBattleEnv(gym.Env):
         return obs, result.reward
 
     def sample_connect_action_in_expected_range(self) -> Action:
-        """Sample an action of type 'connect' where the parameters
-        are in the the expected ranges but not necessarily verifying
-        inter-component constraints.
-        """
+        """抽取一种“连接”类型的动作，其中参数在预期范围内，但不一定验证组件之间的约束。"""
         np_random = self.action_space.np_random
         discovered_credential_count = len(self.__credential_cache)
 
@@ -921,14 +857,10 @@ class CyberBattleEnv(gym.Env):
             np_random.randint(len(self.__credential_cache))], numpy.int32))
 
     def sample_action_in_range(self, kinds: Optional[List[int]] = None) -> Action:
-        """Sample an action in the expected component ranges but
-        not necessarily verifying inter-component constraints.
-        (e.g., may return a local_vulnerability action that is not
-        supported by the node)
+        """在预期的组件范围内抽取一个动作，但不一定验证组件之间的约束。
+        （例如，可能返回一个不被节点支持的 local_vulnerability 动作）
 
-        - kinds -- A list of elements in {0,1,2} indicating what kind of
-        action to sample (0:local, 1:remote, 2:connect)
-        """
+        - kinds -- 一个包含 {0,1,2} 元素的列表，表示要抽取的动作类型（0：本地，1：远程，2：连接）"""
         np_random = self.action_space.np_random
 
         discovered_credential_count = len(self.__credential_cache)
@@ -959,14 +891,13 @@ class CyberBattleEnv(gym.Env):
         return action
 
     def is_node_owned(self, node: int):
-        """Return true if a discovered node (specified by its external node index)
-        is owned by the attacker agent"""
+        """如果一个已发现的节点（通过其外部节点索引指定）被攻击者代理拥有，则返回 true"""
         node_id = self.__internal_node_id_from_external_node_index(node)
         node_owned = self._actuator.get_node_privilegelevel(node_id) > PrivilegeLevel.NoAccess
         return node_owned
 
     def is_action_valid(self, action, action_mask: Optional[ActionMask] = None) -> bool:
-        """Determine if an action is valid (i.e. parameters are in expected ranges)"""
+        """确定一个动作是否有效（即参数是否在预期范围内）"""
         assert 1 == len(action.keys())
 
         kind = DiscriminatedUnion.kind(action)
@@ -994,7 +925,7 @@ class CyberBattleEnv(gym.Env):
         return in_range and self.apply_mask(action, action_mask)
 
     def sample_valid_action(self, kinds=None) -> Action:
-        """Sample an action within the expected ranges until getting a valid one"""
+        """在预期范围内抽取一个动作，直到获得一个有效的动作"""
         action_mask = self.compute_action_mask()
         action = self.sample_action_in_range(kinds)
         while not self.apply_mask(action, action_mask):
@@ -1002,7 +933,7 @@ class CyberBattleEnv(gym.Env):
         return action
 
     def sample_valid_action_with_luck(self) -> Action:
-        """Sample an action until getting a valid one"""
+        """抽取一个动作，直到获得一个有效的动作"""
         action_mask = self.compute_action_mask()
         action = cast(Action, self.action_space.sample())
         while not self.apply_mask(action, action_mask):
@@ -1010,10 +941,8 @@ class CyberBattleEnv(gym.Env):
         return action
 
     def __get_explored_network(self) -> networkx.DiGraph:
-        """Returns the graph of nodes discovered so far
-        with annotated edges representing interactions
-        that took place during the simulation.
-        """
+        """返回到目前为止发现的节点图，
+        边上标注了表示模拟过程中发生的交互。"""
         known_nodes = [node_id for node_id, _ in self._actuator.discovered_nodes()]
         network = self.__environment.network
         subgraph = network.subgraph(known_nodes).copy()
@@ -1056,7 +985,7 @@ class CyberBattleEnv(gym.Env):
         return True
 
     def __defender_constraints_broken(self) -> bool:
-        """Check if any of the defender's constraint is not met"""
+        """"检查防御者的任何约束是否未满足"""
         constraint = self.__defender_constraint
 
         if self.__defender_agent is not None and \
@@ -1066,30 +995,27 @@ class CyberBattleEnv(gym.Env):
         return False
 
     def __defender_goal_reached(self) -> bool:
-        """Check if defender's goal is reached(e.g. full eviction of attacker)"""
+        """检查防御者的目标是否已达成（例如，完全驱逐攻击者）"""
         goal = self.__defender_goal
 
         return goal.eviction and not (self.__get__owned_nodes_indices())
 
     def get_explored_network_as_numpy(self, observation: Observation) -> numpy.ndarray:
-        """Return the explored network graph adjacency matrix
-        as an numpy array of shape (N,N) where
-        N is the number of nodes discovered so far"""
+        """返回已探索网络图的邻接矩阵，
+        以 numpy 数组的形式，形状为 (N,N)，其中
+        N 是到目前为止发现的节点数量"""
         return convert_matrix.to_numpy_array(observation['_explored_network'], weight='kind_as_float')
 
     def get_explored_network_node_properties_bitmap_as_numpy(self, observation: Observation) -> numpy.ndarray:
-        """Return a combined the matrix of adjacencies (left part) and
-        node properties bitmap (right part).
-        Suppose N is the number of discovered nodes and
-                P is the total number of properties then
-        Then the return matrix is of the form:
+        """返回组合的邻接矩阵（左部分）和节点属性位图（右部分）。
+        假设 N 是已发现节点的数量，P 是属性的总数，则
+        返回的矩阵形式如下：
 
           ^  <---- N -----><------  P ------>
           |  (            |                 )
-          N  ( Adjacency  | Node-Properties )
-          |  (  Matrix    |     Bitmap      )
+          N  ( 邻接矩阵    | 节点属性位图     )
+          |  (            |                 )
           V  (            |                 )
-
         """
         return numpy.block([convert_matrix.to_numpy_array(observation['_explored_network'], weight='kind_as_float'),
                             numpy.array(observation['discovered_nodes_properties'])])

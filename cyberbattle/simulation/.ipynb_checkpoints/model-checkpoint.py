@@ -1,23 +1,21 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT License.
 
-"""Data model for the simulation environment.
+"""仿真环境的数据模型。
 
-The simulation environment is given by the directed graph
-formally defined by:
+仿真环境由如下定义的有向图给出：
 
-  Node := NodeID x ListeningService[] x Value x Vulnerability[] x FirewallConfig
-  Edge := NodeID x NodeID x PortName
+  节点 := NodeID x ListeningService[] x Value x Vulnerability[] x FirewallConfig
+  边 := NodeID x NodeID x PortName
 
- where:
-  - NodeID: string
+ 其中：
+  - NodeID: 字符串
   - ListeningService : Name x AllowedCredentials
-  - AllowedCredentials : string[] # credential pair represented by just a
-    string ID
-  - Value : [0...100]     # Intrinsic value of reaching this node
-  - Vulnerability : VulnerabilityID x Type x Precondition x Outcome x Rates
-  - VulnerabilityID : string
-  - Rates : ProbingDetectionRate x ExploitDetectionRate x SuccessRate
+  - AllowedCredentials : 字符串[]  # 仅通过字符串ID表示的凭证对
+  - Value : [0...100]     # 到达此节点的固有价值
+  - Vulnerability : VulnerabilityID x 类型 x 先决条件 x 结果 x 概率
+  - VulnerabilityID : 字符串
+  - 概率 : ProbingDetectionRate x ExploitDetectionRate x SuccessRate
   - FirewallConfig: {
       outgoing :  FirwallRule[]
       incoming : FirwallRule [] }
@@ -36,23 +34,24 @@ import yaml
 import random
 
 import matplotlib  # type: ignore
-matplotlib.use('Agg')
+
+matplotlib.use("Agg")
 
 VERSION_TAG = "0.1.0"
 
 ALGEBRA = boolean.BooleanAlgebra()
 
-# Type alias for identifiers
+# 标识符的类型别名
 NodeID = str
 
-# A unique identifier
+# 唯一标识符
 ID = str
 
-# a (login,password/token) credential pair is abstracted as just a unique
-# string identifier
+# (登录名,密码/令牌)凭证对抽象为唯一的
+# 字符串标识符
 CredentialID = str
 
-# Intrinsic value of a reaching a given node in [0,100]
+# 到达指定节点的固有价值[0,100]
 NodeValue = int
 
 
@@ -61,44 +60,46 @@ PortName = str
 
 @dataclass
 class ListeningService:
-    """A service port on a given node accepting connection initiated
-    with the specified allowed credentials """
-    # Name of the port the service is listening to
+    """给定节点上的服务端口，接受使用指定凭证发起的连接"""
+
+    # 服务监听的端口名称
     name: PortName
-    # credential allowed to authenticate with the service
+    # 允许使用此服务的凭证
     allowedCredentials: List[CredentialID] = dataclasses.field(default_factory=list)
-    # whether the service is running or stopped
+    # 服务是否正在运行
     running: bool = True
-    # Weight used to evaluate the cost of not running the service
+    # 用于评估停止服务的成本的权重
     sla_weight = 1.0
 
 
-x = ListeningService(name='d')
+x = ListeningService(name="d")
 VulnerabilityID = str
 
-# Probability rate
+# 概率率
 Probability = float
 
-# The name of a node property indicating the presence of a
-# service, component, feature or vulnerability on a given node.
+# 表示给定节点上服务、组件、功能或漏洞存在的节点属性名称
 PropertyName = str
 
 
 class Rates(NamedTuple):
-    """Probabilities associated with a given vulnerability"""
+    """与给定漏洞相关的概率"""
+
     probingDetectionRate: Probability = 0.0
     exploitDetectionRate: Probability = 0.0
     successRate: Probability = 1.0
 
 
 class VulnerabilityType(Enum):
-    """Is the vulnerability exploitable locally or remotely?"""
+    """漏洞是否可以本地或远程利用"""
+
     LOCAL = 1
     REMOTE = 2
 
 
 class PrivilegeLevel(IntEnum):
-    """Access privilege level on a given node"""
+    """给定节点上的访问特权级别"""
+
     NoAccess = 0
     LocalUser = 1
     Admin = 2
@@ -111,69 +112,70 @@ def escalate(current_level, escalation_level: PrivilegeLevel) -> PrivilegeLevel:
 
 
 class VulnerabilityOutcome:
-    """Outcome of exploiting a given vulnerability"""
+    """利用给定漏洞的结果"""
 
 
 class LateralMove(VulnerabilityOutcome):
-    """Lateral movement to the target node"""
+    """横向移动到目标节点"""
+
     success: bool
 
 
 class CustomerData(VulnerabilityOutcome):
-    """Access customer data on target node"""
+    """访问目标节点上的客户数据"""
 
 
 class PrivilegeEscalation(VulnerabilityOutcome):
-    """Privilege escalation outcome"""
+    """特权升级结果"""
 
     def __init__(self, level: PrivilegeLevel):
         self.level = level
 
     @property
     def tag(self):
-        """Escalation tag that gets added to node properties when
-        the escalation level is reached for that node"""
+        """当特权级别达到该节点时，添加到节点属性中的升级标签"""
         return f"privilege_{self.level}"
 
 
 class SystemEscalation(PrivilegeEscalation):
-    """Escalation to SYSTEM privileges"""
+    """升级到SYSTEM特权"""
 
     def __init__(self):
         super().__init__(PrivilegeLevel.System)
 
 
 class AdminEscalation(PrivilegeEscalation):
-    """Escalation to local administrator privileges"""
+    """升级到本地管理员特权"""
 
     def __init__(self):
         super().__init__(PrivilegeLevel.Admin)
 
 
 class ProbeSucceeded(VulnerabilityOutcome):
-    """Probing succeeded"""
+    """探测成功"""
 
     def __init__(self, discovered_properties: List[PropertyName]):
         self.discovered_properties = discovered_properties
 
 
 class ProbeFailed(VulnerabilityOutcome):
-    """Probing failed"""
+    """探测失败"""
 
 
 class ExploitFailed(VulnerabilityOutcome):
-    """This is for situations where the exploit fails """
+    """当漏洞利用失败时的结果"""
 
 
 class CachedCredential(NamedTuple):
-    """Encodes a machine-port-credential triplet"""
+    """编码计算机端口凭证三元组"""
+
     node: NodeID
     port: PortName
     credential: CredentialID
 
 
 class LeakedCredentials(VulnerabilityOutcome):
-    """A set of credentials obtained by exploiting a vulnerability"""
+    """通过利用漏洞泄露的凭证集"""
 
     credentials: List[CachedCredential]
 
@@ -182,30 +184,26 @@ class LeakedCredentials(VulnerabilityOutcome):
 
 
 class LeakedNodesId(VulnerabilityOutcome):
-    """A set of node IDs obtained by exploiting a vulnerability"""
+    """通过利用漏洞泄露的节点ID集"""
 
     def __init__(self, nodes: List[NodeID]):
         self.nodes = nodes
 
 
-VulnerabilityOutcomes = Union[
-    LeakedCredentials, LeakedNodesId, PrivilegeEscalation, AdminEscalation,
-    SystemEscalation, CustomerData, LateralMove, ExploitFailed]
+VulnerabilityOutcomes = Union[LeakedCredentials, LeakedNodesId, PrivilegeEscalation, AdminEscalation, SystemEscalation, CustomerData, LateralMove, ExploitFailed]
 
+class AttackResult:
+    """尝试特定攻击（本地或远程）的结果"""
 
-class AttackResult():
-    """The result of attempting a specific attack (either local or remote)"""
     success: bool
     expected_outcome: Union[VulnerabilityOutcomes, None]
 
 
 class Precondition:
-    """ A predicate logic expression defining the condition under which a given
-    feature or vulnerability is present or not.
-    The symbols used in the expression refer to properties associated with
-    the corresponding node.
-    E.g. 'Win7', 'Server', 'IISInstalled', 'SQLServerInstalled',
-    'AntivirusInstalled' ...
+    """定义给定功能或漏洞存在或不存在的条件的谓词逻辑表达式。
+    表达式中使用的符号指的是与相应节点相关的属性。
+    例如：'Win7'、'Server'、'IISInstalled'、'SQLServerInstalled'、
+    'AntivirusInstalled' 等...
     """
 
     expression: boolean.Expression
@@ -218,77 +216,83 @@ class Precondition:
 
 
 class VulnerabilityInfo(NamedTuple):
-    """Definition of a known vulnerability"""
-    # an optional description of what the vulnerability is
+    """已知漏洞的定义"""
+
+    # 可选的漏洞描述
     description: str
-    # type of vulnerability
+    # 漏洞类型
     type: VulnerabilityType
-    # what happens when successfully exploiting the vulnerability
+    # 成功利用漏洞后发生的事情
     outcome: VulnerabilityOutcome
-    # a boolean expression over a node's properties determining if the
-    # vulnerability is present or not
+    # 确定漏洞是否存在的布尔表达式
     precondition: Precondition = Precondition("true")
-    # rates of success/failure associated with this vulnerability
+    # 与此漏洞相关的成功/失败概率
     rates: Rates = Rates()
-    # points to information about the vulnerability
+    # 指向漏洞信息的URL
     URL: str = ""
-    # some cost associated with exploiting this vulnerability (e.g.
-    # brute force more costly than dumping credentials)
+    # 与利用该漏洞相关的一些成本（例如，暴力破解比获取凭证更昂贵）
     cost: float = 1.0
-    # a string displayed when the vulnerability is successfully exploited
+    # 漏洞成功利用时显示的字符串
     reward_string: str = ""
 
 
-# A dictionary storing information about all supported vulnerabilities
-# or features supported by the simulation.
-# This is to be used as a global dictionary pre-populated before
-# starting the simulation and estimated from real-world data.
+# 存储仿真中所有支持的漏洞或功能信息的字典。
+# 这是在启动仿真之前预填充的全局字典，并根据现实世界的数据进行估算。
 VulnerabilityLibrary = Dict[VulnerabilityID, VulnerabilityInfo]
 
 
 class RulePermission(Enum):
-    """Determine if a rule is blocks or allows traffic"""
+    """确定规则是允许还是阻止流量"""
+
     ALLOW = 0
     BLOCK = 1
 
 
 @dataclass(frozen=True)
 class FirewallRule:
-    """A firewall rule"""
-    # A port name
+    """防火墙规则"""
+
+    # 端口名称
     port: PortName
-    # permission on this port
+    # 该端口上的权限
     permission: RulePermission
-    # An optional reason for the block/allow rule
+    # 阻止/允许规则的可选理由
     reason: str = ""
 
 
 @dataclass
 class FirewallConfiguration:
-    """Firewall configuration on a given node.
-    Determine if traffic should be allowed or specifically blocked
-    on a given port for outgoing and incoming traffic.
-    The rules are process in order: the first rule matching a given
-    port is applied and the rest are ignored.
+    """给定节点的防火墙配置。
+    确定在给定端口上对出站和入站流量的允许或阻止。
+    规则按顺序处理：匹配给定端口的第一个规则将被应用，后续规则将被忽略。
 
-    Port that are not listed in the configuration
-    are assumed to be blocked. (Adding an explicit block rule
-    can still be useful to give a reason for the block.)
+    配置中未列出的端口默认为被阻止。（添加显式阻止规则
+    仍然有助于给出阻止的理由。）
     """
-    outgoing: List[FirewallRule] = field(repr=True, default_factory=lambda: [
-        FirewallRule("RDP", RulePermission.ALLOW),
-        FirewallRule("SSH", RulePermission.ALLOW),
-        FirewallRule("HTTPS", RulePermission.ALLOW),
-        FirewallRule("HTTP", RulePermission.ALLOW)])
-    incoming: List[FirewallRule] = field(repr=True, default_factory=lambda: [
-        FirewallRule("RDP", RulePermission.ALLOW),
-        FirewallRule("SSH", RulePermission.ALLOW),
-        FirewallRule("HTTPS", RulePermission.ALLOW),
-        FirewallRule("HTTP", RulePermission.ALLOW)])
+
+    outgoing: List[FirewallRule] = field(
+        repr=True,
+        default_factory=lambda: [
+            FirewallRule("RDP", RulePermission.ALLOW),
+            FirewallRule("SSH", RulePermission.ALLOW),
+            FirewallRule("HTTPS", RulePermission.ALLOW),
+            FirewallRule("HTTP", RulePermission.ALLOW),
+        ],
+    )
+    incoming: List[FirewallRule] = field(
+        repr=True,
+        default_factory=lambda: [
+            FirewallRule("RDP", RulePermission.ALLOW),
+            FirewallRule("SSH", RulePermission.ALLOW),
+            FirewallRule("HTTPS", RulePermission.ALLOW),
+            FirewallRule("HTTP", RulePermission.ALLOW),
+        ],
+    )
 
 
 class MachineStatus(Enum):
-    """Machine running status"""
+    """机器运行状态"""
+
     Stopped = 0
     Running = 1
     Imaging = 2
@@ -296,256 +300,203 @@ class MachineStatus(Enum):
 
 @dataclass
 class NodeInfo:
-    """A computer node in the enterprise network"""
-    # List of port/protocol the node is listening to
+    """企业网络中的计算机节点"""
+
+    # 节点监听的端口/协议列表
     services: List[ListeningService]
-    # List of known vulnerabilities for the node
+    # 节点已知漏洞列表
     vulnerabilities: VulnerabilityLibrary = dataclasses.field(default_factory=dict)
-    # Intrinsic value of the node (translates into a reward if the node gets owned)
+    # 节点的固有价值（如果节点被占领，则转化为奖励）
     value: NodeValue = 0
-    # Properties of the nodes, some of which can imply further vulnerabilities
+    # 节点的属性，其中一些属性可能意味着进一步的漏洞
     properties: List[PropertyName] = dataclasses.field(default_factory=list)
-    # Fireall configuration of the node
+    # 节点的防火墙配置
     firewall: FirewallConfiguration = FirewallConfiguration()
-    # Attacker agent installed on the node? (aka the node is 'pwned')
+    # 节点上是否安装了攻击代理？（即节点是否被'攻陷'）
     agent_installed: bool = False
-    # Esclation level
+    # 节点的特权级别
     privilege_level: PrivilegeLevel = PrivilegeLevel.NoAccess
-    # Can the node be re-imaged by a defender agent?
+    # 节点是否可以被防御者代理重新映像？
     reimagable: bool = True
-    # Last time the node was reimaged
+    # 节点最后一次被重新映像的时间
     last_reimaging: Optional[datetime] = None
-    # String displayed when the node gets owned
+    # 节点被攻陷时显示的字符串
     owned_string: str = ""
-    # Machine status: running or stopped
+    # 机器状态：运行中或停止
     status = MachineStatus.Running
-    # Relative node weight used to calculate the cost of stopping this machine
-    # or its services
+    # 用于计算停止此机器或其服务成本的相对节点权重
     sla_weight: float = 1.0
-
-
 class Identifiers(NamedTuple):
-    """Define the global set of identifiers used
-    in the definition of a given environment.
-    Such set defines a common vocabulary possibly
-    shared across multiple environments, thus
-    ensuring a consistent numbering convention
-    that a machine learniong model can learn from."""
-    # Array of all possible node property identifiers
+    """定义给定环境中使用的全局标识符集。
+    这样的集合定义了一个共享的公共词汇，可能
+    跨多个环境共享，从而确保一致的编号约定，
+    使得机器学习模型可以从中学习。
+    """
+
+    # 所有可能的节点属性标识符数组
     properties: List[PropertyName] = []
-    # Array of all possible port names
-    ports: List[PortName] = []
-    # Array of all possible local vulnerabilities names
+    # 所有可能的端口名称数组
+    ports: List[PortName] = ["Null"]
+    # 所有可能的本地漏洞名称数组
     local_vulnerabilities: List[VulnerabilityID] = []
-    # Array of all possible remote vulnerabilities names
+    # 所有可能的远程漏洞名称数组
     remote_vulnerabilities: List[VulnerabilityID] = []
 
 
 def iterate_network_nodes(network: nx.graph.Graph) -> Iterator[Tuple[NodeID, NodeInfo]]:
-    """Iterates over the nodes in the network"""
+    """遍历网络中的节点"""
     for nodeid, nodevalue in network.nodes.items():
-        node_data: NodeInfo = nodevalue['data']
+        node_data: NodeInfo = nodevalue["data"]
         yield nodeid, node_data
 
 
-# NOTE: Using `NameTuple` instead of `dataclass` breaks deserialization
-# with PyYaml 2.8.1 due to a new recrusive references to the networkx graph in the field
+# 注意：使用 `NamedTuple` 而不是 `dataclass` 会导致 PyYaml 2.8.1 中的反序列化失败，
+# 因为该版本中的网络x图存在新的递归引用：
 #   edges: !!python/object:networkx.classes.reportviews.EdgeView
 #     _adjdict: *id018
 #     _graph: *id019
 @dataclass
 class Environment:
-    """ The static graph defining the network of computers """
+    """定义计算机网络的静态图"""
+
     network: nx.DiGraph
     vulnerability_library: VulnerabilityLibrary
     identifiers: Identifiers
     creationTime: datetime = datetime.utcnow()
     lastModified: datetime = datetime.utcnow()
-    # a version tag indicating the environment schema version
+    # 用于指示环境架构版本的版本标签
     version: str = VERSION_TAG
 
     def nodes(self) -> Iterator[Tuple[NodeID, NodeInfo]]:
-        """Iterates over the nodes in the network"""
+        """遍历网络中的节点"""
         return iterate_network_nodes(self.network)
 
     def get_node(self, node_id: NodeID) -> NodeInfo:
-        """Retrieve info for the node with the specified ID"""
-        node_info: NodeInfo = self.network.nodes[node_id]['data']
+        """检索指定ID节点的详细信息"""
+        node_info: NodeInfo = self.network.nodes[node_id]["data"]
         return node_info
 
     def plot_environment_graph(self) -> None:
-        """Plot the full environment graph"""
-        nx.draw(self.network,
-                with_labels=True,
-                node_color=[n['data'].value
-                            for i, n in
-                            self.network.nodes.items()],
-                cmap=plt.cm.Oranges)  # type:ignore
+        """绘制完整的环境图"""
+        nx.draw(self.network, with_labels=True, node_color=[n["data"].value for i, n in self.network.nodes.items()], cmap=plt.cm.Oranges)  # type:ignore
 
 
 def create_network(nodes: Dict[NodeID, NodeInfo]) -> nx.DiGraph:
-    """Create a network with a set of nodes and no edges"""
+    """使用一组节点创建一个没有边的网络"""
     graph = nx.DiGraph()
-    graph.add_nodes_from([(k, {'data': v}) for (k, v) in list(nodes.items())])
+    graph.add_nodes_from([(k, {"data": v}) for (k, v) in list(nodes.items())])
     return graph
 
-# Helpers to infer constants from an environment
+
+# 帮助函数，用于从环境中推断常量
 
 
 def collect_ports_from_vuln(vuln: VulnerabilityInfo) -> List[PortName]:
-    """Returns all the port named referenced in a given vulnerability"""
+    """返回给定漏洞中引用的所有端口名称"""
     if isinstance(vuln.outcome, LeakedCredentials):
         return [c.port for c in vuln.outcome.credentials]
     else:
         return []
 
 
-def collect_vulnerability_ids_from_nodes_bytype(
-        nodes: Iterator[Tuple[NodeID, NodeInfo]],
-        global_vulnerabilities: VulnerabilityLibrary,
-        type: VulnerabilityType) -> List[VulnerabilityID]:
-    """Collect and return all IDs of all vulnerability of the specified type
-    that are referenced in a given set of nodes and vulnerability library
-    """
-    return sorted(list({
-        id
-        for _, node_info in nodes
-        for id, v in node_info.vulnerabilities.items()
-        if v.type == type
-    }.union(
-        id
-        for id, v in global_vulnerabilities.items()
-        if v.type == type
-    )))
+def collect_vulnerability_ids_from_nodes_bytype(nodes: Iterator[Tuple[NodeID, NodeInfo]], global_vulnerabilities: VulnerabilityLibrary, type: VulnerabilityType) -> List[VulnerabilityID]:
+    """收集并返回给定节点和漏洞库中指定类型的所有漏洞ID"""
+    return sorted(list({id for _, node_info in nodes for id, v in node_info.vulnerabilities.items() if v.type == type}.union(id for id, v in global_vulnerabilities.items() if v.type == type)))
 
 
 def collect_properties_from_nodes(nodes: Iterator[Tuple[NodeID, NodeInfo]]) -> List[PropertyName]:
-    """Collect and return sorted list of all property names used in a given set of nodes"""
-    return sorted({
-        p
-        for _, node_info in nodes
-        for p in node_info.properties
-    })
+    """收集并返回给定节点中使用的所有属性名称的排序列表"""
+    return sorted({p for _, node_info in nodes for p in node_info.properties})
 
 
-def collect_ports_from_nodes(
-        nodes: Iterator[Tuple[NodeID, NodeInfo]],
-        vulnerability_library: VulnerabilityLibrary) -> List[PortName]:
-    """Collect and return all port names used in a given set of nodes
-    and global vulnerability library"""
-    return sorted(list({
-        port
-        for _, v in vulnerability_library.items()
-        for port in collect_ports_from_vuln(v)
-    }.union({
-        port
-        for _, node_info in nodes
-        for _, v in node_info.vulnerabilities.items()
-        for port in collect_ports_from_vuln(v)
-    }.union(
-        {service.name
-         for _, node_info in nodes
-         for service in node_info.services}))))
-
-
-def collect_ports_from_environment(environment: Environment) -> List[PortName]:
-    """Collect and return all port names used in a given environment"""
-    return collect_ports_from_nodes(environment.nodes(), environment.vulnerability_library)
-
-
-def infer_constants_from_nodes(
-        nodes: Iterator[Tuple[NodeID, NodeInfo]],
-        vulnerabilities: Dict[VulnerabilityID, VulnerabilityInfo]) -> Identifiers:
-    """Infer global environment constants from a given network"""
-    return Identifiers(
-        properties=collect_properties_from_nodes(nodes),
-        ports=collect_ports_from_nodes(nodes, vulnerabilities),
-        local_vulnerabilities=collect_vulnerability_ids_from_nodes_bytype(
-            nodes, vulnerabilities, VulnerabilityType.LOCAL),
-        remote_vulnerabilities=collect_vulnerability_ids_from_nodes_bytype(
-            nodes, vulnerabilities, VulnerabilityType.REMOTE)
+def collect_ports_from_nodes(nodes: Iterator[Tuple[NodeID, NodeInfo]], vulnerability_library: VulnerabilityLibrary) -> List[PortName]:
+    """收集并返回给定节点和全局漏洞库中使用的所有端口名称"""
+    return sorted(
+        list(
+            {port for _, v in vulnerability_library.items() for port in collect_ports_from_vuln(v)}.union(
+                {port for _, node_info in nodes for _, v in node_info.vulnerabilities.items() for port in collect_ports_from_vuln(v)}.union(
+                    {service.name for _, node_info in nodes for service in node_info.services}
+                )
+            )
+        )
     )
 
 
-def infer_constants_from_network(
-        network: nx.Graph,
-        vulnerabilities: Dict[VulnerabilityID, VulnerabilityInfo]) -> Identifiers:
-    """Infer global environment constants from a given network"""
+def collect_ports_from_environment(environment: Environment) -> List[PortName]:
+    """收集并返回给定环境中使用的所有端口名称"""
+    return collect_ports_from_nodes(environment.nodes(), environment.vulnerability_library)
+
+
+def infer_constants_from_nodes(nodes: Iterator[Tuple[NodeID, NodeInfo]], vulnerabilities: Dict[VulnerabilityID, VulnerabilityInfo]) -> Identifiers:
+    """从给定网络推断全局环境常量"""
+    return Identifiers(
+        properties=collect_properties_from_nodes(nodes),
+        ports=collect_ports_from_nodes(nodes, vulnerabilities),
+        local_vulnerabilities=collect_vulnerability_ids_from_nodes_bytype(nodes, vulnerabilities, VulnerabilityType.LOCAL),
+        remote_vulnerabilities=collect_vulnerability_ids_from_nodes_bytype(nodes, vulnerabilities, VulnerabilityType.REMOTE),
+    )
+
+
+def infer_constants_from_network(network: nx.Graph, vulnerabilities: Dict[VulnerabilityID, VulnerabilityInfo]) -> Identifiers:
+    """从给定网络推断全局环境常量"""
     return infer_constants_from_nodes(iterate_network_nodes(network), vulnerabilities)
 
 
-# Network creation
+# 网络创建
 
-# A sample set of envrionment constants
+# 一个环境常量的示例集合
 SAMPLE_IDENTIFIERS = Identifiers(
-    ports=['RDP', 'SSH', 'SMB', 'HTTP', 'HTTPS', 'WMI', 'SQL'],
-    properties=[
-        'Windows', 'Linux', 'HyperV-VM', 'Azure-VM', 'Win7', 'Win10',
-        'PortRDPOpen', 'GuestAccountEnabled']
+    ports=["RDP", "SSH", "SMB", "HTTP", "HTTPS", "WMI", "SQL"], properties=["Windows", "Linux", "HyperV-VM", "Azure-VM", "Win7", "Win10", "PortRDPOpen", "GuestAccountEnabled"]
 )
 
 
-def assign_random_labels(
-        graph: nx.DiGraph,
-        vulnerabilities: VulnerabilityLibrary = dict([]),
-        identifiers: Identifiers = SAMPLE_IDENTIFIERS) -> nx.DiGraph:
-    """Create an envrionment network by randomly assigning node information
-    (properties, firewall configuration, vulnerabilities)
-    to the nodes of a given graph structure"""
+def assign_random_labels(graph: nx.DiGraph, vulnerabilities: VulnerabilityLibrary = dict([]), identifiers: Identifiers = SAMPLE_IDENTIFIERS) -> nx.DiGraph:
+    """通过随机分配节点信息（属性、防火墙配置、漏洞）
+    来创建一个环境网络
+    """
 
-    # convert node IDs to string
+    # 将节点ID转换为字符串
     graph = nx.relabel_nodes(graph, {i: str(i) for i in graph.nodes})
 
     def create_random_firewall_configuration() -> FirewallConfiguration:
         return FirewallConfiguration(
-            outgoing=[
-                FirewallRule(port=p, permission=RulePermission.ALLOW)
-                for p in
-                random.sample(
-                    identifiers.ports,
-                    k=random.randint(0, len(identifiers.ports)))],
-            incoming=[
-                FirewallRule(port=p, permission=RulePermission.ALLOW)
-                for p in random.sample(
-                    identifiers.ports,
-                    k=random.randint(0, len(identifiers.ports)))])
+            outgoing=[FirewallRule(port=p, permission=RulePermission.ALLOW) for p in random.sample(identifiers.ports, k=random.randint(0, len(identifiers.ports)))],
+            incoming=[FirewallRule(port=p, permission=RulePermission.ALLOW) for p in random.sample(identifiers.ports, k=random.randint(0, len(identifiers.ports)))],
+        )
 
     def create_random_properties() -> List[PropertyName]:
-        return list(random.sample(
-            identifiers.properties,
-            k=random.randint(0, len(identifiers.properties))))
+        return list(random.sample(identifiers.properties, k=random.randint(0, len(identifiers.properties))))
 
     def pick_random_global_vulnerabilities() -> VulnerabilityLibrary:
         count = random.random()
         return {k: v for (k, v) in vulnerabilities.items() if random.random() > count}
 
     def add_leak_neighbors_vulnerability(library: VulnerabilityLibrary, node_id: NodeID) -> None:
-        """Create a vulnerability for each node that reveals its immediate neighbors"""
+        """为每个节点创建一个漏洞，揭示其直接邻居"""
         neighbors = {t for (s, t) in graph.edges() if s == node_id}
         if len(neighbors) > 0:
-            library['RecentlyAccessedMachines'] = VulnerabilityInfo(
-                description="AzureVM info, including public IP address",
-                type=VulnerabilityType.LOCAL,
-                outcome=LeakedNodesId(list(neighbors)))
+            library["RecentlyAccessedMachines"] = VulnerabilityInfo(description="AzureVM信息，包括公网IP地址", type=VulnerabilityType.LOCAL, outcome=LeakedNodesId(list(neighbors)))
 
     def create_random_vulnerabilities(node_id: NodeID) -> VulnerabilityLibrary:
         library = pick_random_global_vulnerabilities()
         add_leak_neighbors_vulnerability(library, node_id)
         return library
 
-    # Pick a random node as the agent entry node
+    # 随机选择一个节点作为代理入口节点
     entry_node_index = random.randrange(len(graph.nodes))
     entry_node_id, entry_node_data = list(graph.nodes(data=True))[entry_node_index]
     graph.nodes[entry_node_id].clear()
-    node_data = NodeInfo(services=[],
-                         value=0,
-                         properties=create_random_properties(),
-                         vulnerabilities=create_random_vulnerabilities(entry_node_id),
-                         firewall=create_random_firewall_configuration(),
-                         agent_installed=True,
-                         reimagable=False,
-                         privilege_level=PrivilegeLevel.Admin)
-    graph.nodes[entry_node_id].update({'data': node_data})
+    node_data = NodeInfo(
+        services=[],
+        value=0,
+        properties=create_random_properties(),
+        vulnerabilities=create_random_vulnerabilities(entry_node_id),
+        firewall=create_random_firewall_configuration(),
+        agent_installed=True,
+        reimagable=False,
+        privilege_level=PrivilegeLevel.Admin,
+    )
+    graph.nodes[entry_node_id].update({"data": node_data})
 
     def create_random_node_data(node_id: NodeID) -> NodeInfo:
         return NodeInfo(
@@ -555,38 +506,25 @@ def assign_random_labels(
             vulnerabilities=create_random_vulnerabilities(node_id),
             firewall=create_random_firewall_configuration(),
             agent_installed=False,
-            privilege_level=PrivilegeLevel.NoAccess)
+            privilege_level=PrivilegeLevel.NoAccess,
+        )
 
     for node in list(graph.nodes):
         if node != entry_node_id:
             graph.nodes[node].clear()
-            graph.nodes[node].update({'data': create_random_node_data(node)})
+            graph.nodes[node].update({"data": create_random_node_data(node)})
 
     return graph
 
 
-# Serialization
-
+# 序列化
 def setup_yaml_serializer() -> None:
-    """Setup a clean YAML formatter for object of type Environment.
-    """
-    yaml.add_representer(Precondition,
-                         lambda dumper, data: dumper.represent_scalar('!BooleanExpression',
-                                                                      str(data.expression)))  # type: ignore
-    yaml.SafeLoader.add_constructor('!BooleanExpression',
-                                    lambda loader, expression: Precondition(
-                                        loader.construct_scalar(expression)))  # type: ignore
-    yaml.add_constructor('!BooleanExpression',
-                         lambda loader, expression:
-                         Precondition(loader.construct_scalar(expression)))  # type: ignore
+    """为环境类型对象设置干净的YAML格式化程序。"""
+    yaml.add_representer(Precondition, lambda dumper, data: dumper.represent_scalar("!BooleanExpression", str(data.expression)))  # type: ignore
+    yaml.SafeLoader.add_constructor("!BooleanExpression", lambda loader, expression: Precondition(loader.construct_scalar(expression)))  # type: ignore
+    yaml.add_constructor("!BooleanExpression", lambda loader, expression: Precondition(loader.construct_scalar(expression)))  # type: ignore
 
-    yaml.add_representer(VulnerabilityType,
-                         lambda dumper, data: dumper.represent_scalar('!VulnerabilityType',
-                                                                      str(data.name)))  # type: ignore
+    yaml.add_representer(VulnerabilityType, lambda dumper, data: dumper.represent_scalar("!VulnerabilityType", str(data.name)))  # type: ignore
 
-    yaml.SafeLoader.add_constructor('!VulnerabilityType',
-                                    lambda loader, expression: VulnerabilityType[
-                                        loader.construct_scalar(expression)])  # type: ignore
-    yaml.add_constructor('!VulnerabilityType',
-                         lambda loader, expression: VulnerabilityType[
-                             loader.construct_scalar(expression)])  # type: ignore
+    yaml.SafeLoader.add_constructor("!VulnerabilityType", lambda loader, expression: VulnerabilityType[loader.construct_scalar(expression)])  # type: ignore
+    yaml.add_constructor("!VulnerabilityType", lambda loader, expression: VulnerabilityType[loader.construct_scalar(expression)])  # type: ignore

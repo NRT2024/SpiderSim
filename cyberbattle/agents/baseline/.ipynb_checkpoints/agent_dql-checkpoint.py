@@ -1,10 +1,9 @@
-# Copyright (c) Microsoft Corporation.
-# Licensed under the MIT License.
+# SpiderSim - A Network Attack Simulation Environment
+# Copyright (c) 2024 NRT
 
-# Function DeepQLearnerPolicy.optimize_model:
-#   Copyright (c) 2017, Pytorch contributors
-#   All rights reserved.
-#   https://github.com/pytorch/tutorials/blob/master/LICENSE
+# This project includes code modified from CyberBattle 
+# (https://github.com/microsoft/CyberBattleSim/tree/main/cyberbattle) used under Licensed under the MIT License.
+
 
 """Deep Q-learning agent applied to chain network (notebook)
 This notebooks can be run directly from VSCode, to generate a

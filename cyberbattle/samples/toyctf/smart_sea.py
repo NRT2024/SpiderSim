@@ -210,14 +210,30 @@ nodes = {
 global_vulnerability_library: Dict[VulnerabilityID, VulnerabilityInfo] = dict([])
 
 # Environment constants
-ENV_IDENTIFIERS = m.infer_constants_from_nodes(
-    cast(Iterator[Tuple[NodeID, NodeInfo]], list(nodes.items())),
-    global_vulnerability_library)
+ENV_IDENTIFIERS = m.infer_constants_from_nodes(cast(Iterator[Tuple[NodeID, NodeInfo]], list(nodes.items())), global_vulnerability_library)
 
 
 def new_environment() -> m.Environment:
+    network_state = m.NetworkState()
+    network_state.computation_resources = {
+        "gpu": m.ComputationResource(
+            id="gpu", 
+            total_amount=200.0, 
+            current_amount=200.0, 
+            value_per_unit=1
+        ),
+        "cpu": m.ComputationResource(
+            id="cpu", 
+            total_amount=100.0, 
+            current_amount=100.0, 
+            value_per_unit=0.5
+        )
+    }
+    network_state.hijacked_computation = {}
+    
     return m.Environment(
         network=m.create_network(nodes),
         vulnerability_library=global_vulnerability_library,
-        identifiers=ENV_IDENTIFIERS
+        identifiers=ENV_IDENTIFIERS,
+        network_state=network_state
     )

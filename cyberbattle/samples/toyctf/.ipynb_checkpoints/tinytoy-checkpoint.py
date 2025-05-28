@@ -1,35 +1,117 @@
+# SpiderSim - A Network Attack Simulation Environment
+# Copyright (c) 2024 NRT
+
+# This project includes code modified from CyberBattle 
+# (https://github.com/microsoft/CyberBattleSim/tree/main/cyberbattle) used under Licensed under the MIT License.
+
+
+"""A tiny toy environment"""
 
 from cyberbattle.simulation import model as m
 from cyberbattle.simulation.model import NodeID, NodeInfo, VulnerabilityID, VulnerabilityInfo
 from typing import Dict, Iterator, cast, Tuple
 
 default_allow_rules = [
-    m.FirewallRule("RDP", m.RulePermission.ALLOW),
     m.FirewallRule("SSH", m.RulePermission.ALLOW),
-    m.FirewallRule("HTTPS", m.RulePermission.ALLOW),
-    m.FirewallRule("HTTP", m.RulePermission.ALLOW),
 ]
 
 # Network nodes involved in the Capture the flag game
-input_list = ['"数据中心": m.NodeInfo(\n    services=[m.ListeningService("SSH", allowedCredentials=["pw数据中心"])],\n    value=1000,\n    properties=["Ubuntu", "nginx/1.10.3"],\n    owned_string="FLAG: 数据中心被攻破",\n    vulnerabilities=dict(\n        ConnectTo大数据分析平台=m.VulnerabilityInfo(\n            description="连接到大数据分析平台",\n            type=m.VulnerabilityType.LOCAL,\n            outcome=m.LeakedCredentials(credentials=[m.CachedCredential(node="大数据分析平台", port="SSH", credential="pw大数据分析平台")]),\n            reward_string="成功连接到大数据分析平台",\n            cost=1.0,\n        ),\n        ConnectTo智能决策支持系统=m.VulnerabilityInfo(\n            description="连接到智能决策支持系统",\n            type=m.VulnerabilityType.LOCAL,\n            outcome=m.LeakedCredentials(credentials=[m.CachedCredential(node="智能决策支持系统", port="SSH", credential="pw智能决策支持系统")]),\n            reward_string="成功连接到智能决策支持系统",\n            cost=1.0,\n        ),\n        ConnectTo数据存储设备=m.VulnerabilityInfo(\n            description="连接到数据存储设备",\n            type=m.VulnerabilityType.LOCAL,\n            outcome=m.LeakedCredentials(credentials=[m.CachedCredential(node="数据存储设备", port="SSH", credential="pw数据存储设备")]),\n            reward_string="成功连接到数据存储设备",\n            cost=1.0,\n        ),\n    ),\n    agent_installed=True,\n    reimagable=False,\n),\n', '"大数据分析平台": m.NodeInfo(\n    services=[m.ListeningService("SSH", allowedCredentials=["pw大数据分析平台"])],\n    value=1000,\n    properties=["Hadoop", "CentOS", "Spark"],\n    owned_string="FLAG: Access granted to Big Data Analytics Platform",\n),\n', '"智能决策支持系统": m.NodeInfo(\n    services=[m.ListeningService("SSH", allowedCredentials=["pw智能决策支持系统"])],\n    value=1000,\n    properties=["Ubuntu", "Python", "AI"],\n    owned_string="FLAG: Access granted to the Intelligent Decision Support System",\n),\n', '"数据存储设备": m.NodeInfo(\n    services=[m.ListeningService("SSH", allowedCredentials=["pw数据存储设备"])],\n    value=1000,\n    properties=["Ubuntu", "MySQL"],\n    owned_string="FLAG: Access granted to 数据存储设备",\n),\n', '"汇聚交换机": m.NodeInfo(\n    services=[m.ListeningService("SSH")],\n    value=1000,\n    properties=["Switch", "Ethernet", "VLAN"],\n    owned_string="FLAG: 汇聚交换机被成功控制",\n    vulnerabilities=dict(\n        ConnectTo环境监测浮标=m.VulnerabilityInfo(\n            description="远程连接到环境监测浮标",\n            type=m.VulnerabilityType.REMOTE,\n            outcome=m.LeakedCredentials(credentials=[m.CachedCredential(node="环境监测浮标", port="SSH", credential="pw环境监测浮标")]),\n            reward_string="成功连接到环境监测浮标",\n            cost=1.0,\n        ),\n        ConnectTo生物监测潜水器=m.VulnerabilityInfo(\n            description="远程连接到生物监测潜水器",\n            type=m.VulnerabilityType.REMOTE,\n            outcome=m.LeakedCredentials(credentials=[m.CachedCredential(node="生物监测潜水器", port="SSH", credential="pw生物监测潜水器")]),\n            reward_string="成功连接到生物监测潜水器",\n            cost=1.0,\n        ),\n        ConnectTo高频地波雷达站=m.VulnerabilityInfo(\n            description="本地连接到高频地波雷达站",\n            type=m.VulnerabilityType.LOCAL,\n            outcome=m.LeakedCredentials(credentials=[m.CachedCredential(node="高频地波雷达站", port="SSH", credential="pw高频地波雷达站")]),\n            reward_string="成功连接到高频地波雷达站",\n            cost=1.0,\n        ),\n        ConnectTo无人机群=m.VulnerabilityInfo(\n            description="本地连接到无人机群",\n            type=m.VulnerabilityType.LOCAL,\n            outcome=m.LeakedCredentials(credentials=[m.CachedCredential(node="无人机群", port="SSH", credential="pw无人机群")]),\n            reward_string="成功连接到无人机群",\n            cost=1.0,\n        ),\n        ConnectTo边缘计算节点=m.VulnerabilityInfo(\n            description="本地连接到边缘计算节点",\n            type=m.VulnerabilityType.LOCAL,\n            outcome=m.LeakedCredentials(credentials=[m.CachedCredential(node="边缘计算节点", port="SSH", credential="pw边缘计算节点")]),\n            reward_string="成功连接到边缘计算节点",\n            cost=1.0,\n        ),\n    ),\n),\n', '"环境监测浮标": m.NodeInfo(\n    services=[m.ListeningService("HTTP", allowedCredentials=["pw环境监测浮标"])],\n    value=1000,\n    properties=["IoT", "Linux", "nginx/1.14.0"],\n    owned_string="FLAG: Access granted to environmental monitoring buoy",\n),\n', '"生物监测潜水器": m.NodeInfo(\n    services=[m.ListeningService("SSH", allowedCredentials=["pw生物监测潜水器"])],\n    value=1000,\n    properties=["潜水器", "生物监测", "水下传感器"],\n    owned_string="FLAG: 生物监测潜水器已被成功控制",\n),\n', '"高频地波雷达站": m.NodeInfo(\n    services=[m.ListeningService("SSH", allowedCredentials=["pw高频地波雷达站"])],\n    value=1000,\n    properties=["Ubuntu", "nginx/1.10.3"],\n    owned_string="FLAG: Access granted to 高频地波雷达站",\n),\n', '"无人机群": m.NodeInfo(\n    services=[m.ListeningService("SSH", allowedCredentials=["pw无人机群"])],\n    value=1000,\n    properties=["Ubuntu", "nginx/1.10.3"],\n    owned_string="FLAG: 无人机群被成功控制",\n),\n', '"边缘计算节点": m.NodeInfo(\n    services=[m.ListeningService("SSH", allowedCredentials=["pw边缘计算节点"])],\n    value=1000,\n    properties=["Ubuntu", "nginx/1.10.3"],\n    owned_string="FLAG: 边缘计算节点已被攻破",\n),\n', '"卫星遥感系统": m.NodeInfo(\n    services=[m.ListeningService("SSH", allowedCredentials=["pw数据中心"])],\n    value=1000,\n    properties=["卫星遥感", "Linux", "nginx/1.14.0"],\n    owned_string="FLAG: 卫星遥感系统已被控制",\n    vulnerabilities=dict(\n        RemoteConnection=m.VulnerabilityInfo(\n            description="远程连接到数据中心",\n            type=m.VulnerabilityType.REMOTE,\n            outcome=m.LeakedCredentials(credentials=[m.CachedCredential(node="数据中心", port="SSH", credential="pw数据中心")]),\n            reward_string="成功连接到数据中心",\n            cost=1.0,\n        ),\n    ),\n),\n', '"专家咨询与培训服务": m.NodeInfo(\n    services=[m.ListeningService("SSH", allowedCredentials=["pw数据中心"])],\n    value=1000,\n    properties=["Ubuntu", "nginx/1.10.3"],\n    owned_string="FLAG: Successfully accessed the expert consultation and training service",\n    vulnerabilities=dict(\n        RemoteConnectionToDataCenter=m.VulnerabilityInfo(\n            description="Remote connection to the data center",\n            type=m.VulnerabilityType.REMOTE,\n            outcome=m.LeakedCredentials(credentials=[m.CachedCredential(node="数据中心", port="SSH", credential="pw数据中心")]),\n            reward_string="Successfully established a remote connection to the data center",\n            cost=1.0,\n        ),\n    ),\n),\n', '"预警与应急响应服务": m.NodeInfo(\n    services=[m.ListeningService("SSH", allowedCredentials=["pw数据中心"])],\n    value=1000,\n    properties=["Ubuntu", "nginx/1.10.3"],\n    owned_string="FLAG: Successfully accessed the 预警与应急响应服务 node",\n    vulnerabilities=dict(\n        RemoteConnectionTo数据中心=m.VulnerabilityInfo(\n            description="Remote connection to the 数据中心 sub_node",\n            type=m.VulnerabilityType.REMOTE,\n            outcome=m.LeakedCredentials(credentials=[m.CachedCredential(node="数据中心", port="SSH", credential="pw数据中心")]),\n            reward_string="Successfully connected to the 数据中心 sub_node via SSH",\n            cost=1.0,\n        ),\n    ),\n),\n', '"远程监控与维护服务": m.NodeInfo(\n    services=[m.ListeningService("SSH", allowedCredentials=["pw数据中心"])],\n    value=1000,\n    properties=["远程监控", "维护服务"],\n    owned_string="FLAG: 远程监控与维护服务已被接管",\n    vulnerabilities=dict(\n        RemoteConnection=m.VulnerabilityInfo(\n            description="远程连接到数据中心",\n            type=m.VulnerabilityType.REMOTE,\n            outcome=m.LeakedCredentials(credentials=[m.CachedCredential(node="数据中心", port="SSH", credential="pw数据中心")]),\n            reward_string="成功远程连接到数据中心",\n            cost=1.0,\n        ),\n    ),\n),\n']
-
-
-
-
-
-
-# 初始化空字典来保存结果
-nodes = {}
-
-# 循环处理每个字符串，将其合并到 combined_config 字典中
-for code in input_list:
-    exec(f"combined_config.update({{{code}}})", globals(), {"combined_config": nodes})
+nodes = {
+    "Website": m.NodeInfo(
+        services=[m.ListeningService("SSH", allowedCredentials=["ReusedMySqlCred-web"])],
+        firewall=m.FirewallConfiguration(incoming=default_allow_rules, outgoing=default_allow_rules + [m.FirewallRule("su", m.RulePermission.ALLOW), m.FirewallRule("sudo", m.RulePermission.ALLOW)]),
+        value=1000,
+        properties=["MySql", "Ubuntu", "nginx/1.10.3"],
+        owned_string="FLAG: Login using insecure SSH user/password",
+        vulnerabilities=dict(
+            ScanPageSource=m.VulnerabilityInfo(
+                description="Website page source contains refrence to browseable " "relative web directory",
+                type=m.VulnerabilityType.REMOTE,
+                outcome=m.LeakedNodesId(["Website.Directory"]),
+                reward_string="Viewing the web page source reveals a URL to a .txt file and directory on the website",
+                cost=1.0,
+            ),
+        ),
+    ),
+    "Website.Directory": m.NodeInfo(
+        services=[m.ListeningService("HTTPS")],
+        value=50,
+        properties=["Ubuntu", "nginx/1.10.3", "CTFFLAG:Readme.txt-Discover secret data"],
+        vulnerabilities=dict(
+            NavigateWebDirectoryFurther=m.VulnerabilityInfo(
+                description="Discover MYSQL credentials MySql for user " "'web' in (getting-started.txt)",
+                type=m.VulnerabilityType.REMOTE,
+                outcome=m.LeakedCredentials(credentials=[m.CachedCredential(node="Website", port="MySQL", credential="ReusedMySqlCred-web")]),
+                reward_string="Discover browseable web directory: Navigating to parent URL revealed file `readme.txt`" "with secret data (aflag); and `getting-started.txt` with MYSQL credentials",
+                cost=1.0,
+            ),
+        ),
+    ),
+    "client": m.NodeInfo(
+        services=[],
+        properties=["CLIENT:Win10"],
+        value=0,
+        vulnerabilities=dict(
+            SearchComputeServer = m.VulnerabilityInfo(
+                description="Search ComputeServer for list of accessed servers",
+                type=m.VulnerabilityType.LOCAL,
+                outcome=m.LeakedCredentials(credentials=[
+                    m.CachedCredential(node="ComputeServer", port="SSH",
+                         credential="ServerCredential")]),
+                reward_string="Find the entrance to the ComputeServer",
+                cost=1.0
+            )),
+        agent_installed=True,
+        reimagable=False,
+    ),
+    'ComputeServer': m.NodeInfo(
+        services=[m.ListeningService("SSH", allowedCredentials=["ServerCredential"])],
+        value=1000,
+        properties=["Linux", "ComputeNode", "GPU"],
+        vulnerabilities=dict(
+            MiningVuln=m.VulnerabilityInfo(
+                description="一个允许劫持算力资源的漏洞",
+                type=m.VulnerabilityType.COMPUTATION_LEAK,
+                precondition=m.Precondition('ComputeNode&GPU'),
+                outcome=m.ComputationResourcesLeaked(
+                    computation_resources=["gpu", "cpu"],
+                    amount=10.0
+                ),
+                reward_string="成功劫持计算资源",
+                cost=2.0,
+            )
+        )
+    ),
+}
 
 global_vulnerability_library: Dict[VulnerabilityID, VulnerabilityInfo] = dict([])
+
 
 # Environment constants
 ENV_IDENTIFIERS = m.infer_constants_from_nodes(cast(Iterator[Tuple[NodeID, NodeInfo]], list(nodes.items())), global_vulnerability_library)
 
+
 def new_environment() -> m.Environment:
-    return m.Environment(network=m.create_network(nodes), vulnerability_library=global_vulnerability_library, identifiers=ENV_IDENTIFIERS)
+    network_state = m.NetworkState()
+    network_state.computation_resources = {
+        "gpu": m.ComputationResource(
+            id="gpu", 
+            total_amount=100.0, 
+            current_amount=100.0, 
+            value_per_unit=0.5
+        ),
+        "cpu": m.ComputationResource(
+            id="cpu", 
+            total_amount=200.0, 
+            current_amount=200.0, 
+            value_per_unit=0.2
+        )
+    }
+    network_state.hijacked_computation = {}
     
+    return m.Environment(
+        network=m.create_network(nodes),
+        vulnerability_library=global_vulnerability_library,
+        identifiers=ENV_IDENTIFIERS,
+        network_state=network_state
+    )

@@ -1,0 +1,29 @@
+## Scenario based landing of Satellite Internet technology
+
+### 1. Domain Background
+
+With the ongoing evolution and widespread adoption of the big data society, the demand for global information transmission has surged, while spectrum resources are becoming increasingly scarce. Satellite internet, with its unique advantages of broad coverage and low latency, presents a promising solution—particularly in remote areas and specialized scenarios. However, the high construction cost and long return on investment of satellite internet create significant challenges for its widespread application. The key issue is how to bridge the gap between satellite internet technology and consumers through satellite communication phones and satellite internet terminals.
+
+### 2. Problem Analysis
+
+Despite the vast market potential of satellite internet, its high construction cost makes widespread adoption difficult, especially in consumer-facing markets. Satellite communication phones and terminal devices remain expensive, limiting acceptance among ordinary users. To achieve successful integration of satellite internet technology into practical applications, breakthroughs are needed in lowering equipment costs, enhancing user experience, and optimizing business models—enabling the technology to be widely used and truly meet user needs.
+
+### 3. Scene Design
+
+The successful implementation of satellite internet technology in real-world applications first requires overcoming the issue of device proliferation. For example, research and development of satellite communication phones and terminal devices must focus on reducing production costs and improving user experience. Additionally, targeted service products should be developed for specific scenarios such as emergency communication, remote healthcare, and smart agriculture. By innovating business models and building strategic partnerships, satellite internet can be integrated with traditional industries, bringing its services into daily consumer life.
+
+### 4. Target Design
+
+The goal of scenario-based application of satellite internet technology is to make satellite internet no longer a high-end technology far from consumers but one that directly serves the daily needs of ordinary users. Achieving this goal requires reducing costs, improving device performance, and optimizing user experience—ultimately allowing satellite internet services to be widely adopted globally. This will meet the needs of various industries, especially in regions without terrestrial network coverage, ensuring continuous and reliable service.
+
+### 5. Element Design
+
+In terms of device design, it is necessary to develop low-cost, high-performance satellite communication phones and terminals to make them accessible to a wider market. The satellite internet system should further optimize communication efficiency between terminals and satellites to ensure stable connectivity in diverse environments. Furthermore, business model innovation is crucial, with opportunities for collaboration with governments, enterprises, and other stakeholders to create market-driven solutions. This will enable satellite internet’s application in industries such as agriculture, healthcare, and transportation, ultimately leading to its seamless integration into real-world scenarios.
+
+### 6. Solution Design
+
+This solution adopts a “technology innovation + market-driven” dual model, promoting the standardization and modularization of satellite communication terminals to reduce manufacturing and operating costs. The platform integrates multiple communication protocols, enabling intelligent switching and compatibility among terminals. Tiered service packages are launched to meet the needs of various industries and users, supporting on-demand payment and subscription services. Meanwhile, cooperation mechanisms with local operators are established to provide flexible terminal access and after-sales support, accelerating the popularization of satellite internet.
+
+### 7. Scene Implementation
+
+In practical implementation, low-cost satellite communication phones and terminals can be prioritized for pilot deployment in remote mountains, islands, wilderness expeditions, and emergency rescue scenarios. Industry-specific services such as smart agriculture and remote healthcare can be launched according to user needs. Product and service offerings will be continuously optimized based on user feedback, while terminal channels and after-sales systems are improved to lower user barriers. Ultimately, large-scale adoption and application of satellite internet technology will be realized, providing robust support for global information connectivity.

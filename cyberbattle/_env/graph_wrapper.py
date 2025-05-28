@@ -1,5 +1,9 @@
-# Copyright (c) Microsoft Corporation.
-# Licensed under the MIT License.
+# SpiderSim - A Network Attack Simulation Environment
+# Copyright (c) 2024 NRT
+
+# This project includes code modified from CyberBattle 
+# (https://github.com/microsoft/CyberBattleSim/tree/main/cyberbattle) used under Licensed under the MIT License.
+
 
 from typing import Union, Tuple
 
@@ -14,56 +18,55 @@ Action = Union[Tuple[int, int], Tuple[int, int, int], Tuple[int, int, int, int]]
 
 
 class CyberBattleGraph(gym.Wrapper):
-    """
+    """ 
 
-    A wrapper for CyberBattleSim that maintains the agent's
-    knowledge graph containing information about the subset
-     of the network that was explored so far.
+    一个CyberBattleSim的包装器，用于维护代理的
+    知识图，包含关于已探索网络子集的信息。
 
-    Currently the nodes of this graph are a subset of the environment nodes.
-    Eventually we will add new node types to represent various entities
-    like credentials and users. Edges will represent relationships between those entities
-    (e.g. user X is authenticated with machine Y using credential Z).
+    目前，该图的节点是环境节点的子集。
+    最终，我们将添加新节点类型来表示各种实体
+    如凭证和用户。边将表示这些实体之间的关系
+    （例如，用户X使用凭证Z通过机器Y进行身份验证）。
 
-    Actions
-    -------
+    动作
+    ----
 
-    Actions are of the form:
+    动作的形式为：
 
     .. code:: python
 
         (kind, *indicators)
 
 
-    The ``kind`` which is one of
+    ``kind`` 可能的值之一：
 
     .. code:: python
 
         # kind
-        0: Local Vulnerability
-        1: Remote Vulnerability
-        2: Connect
+        0: 本地漏洞
+        1: 远程漏洞
+        2: 连接
 
-    The indicators vary in meaning and length, depending on the ``kind``:
+    指示符根据 ``kind`` 变化，具有不同的含义和长度：
 
     .. code:: python
 
-        # kind=0 (Local Vulnerability)
+        # kind=0 (本地漏洞)
         indicators = (node_id, local_vulnerability_id)
 
-        # kind=1 (Remote Vulnerability)
+        # kind=1 (远程漏洞)
         indicators = (from_node_id, to_node_id, remote_vulnerability_id)
 
-        # kind=2 (Connect)
+        # kind=2 (连接)
         indicators = (from_node_id, to_node_id, port_id, credential_id)
 
-    The node ids can be obtained from the graph, e.g.
+    节点ID可以从图中获得，例如：
 
     .. code:: python
 
         node_ids = observation['graph'].keys()
 
-    The other indicators are listed below.
+    其他指示符如下所示：
 
     .. code:: python
 
@@ -88,31 +91,30 @@ class CyberBattleGraph(gym.Wrapper):
         6: SSH-key
         7: su
 
-    Examples
+    示例
     ~~~~~~~~
-    Here are some example actions:
+    以下是一些示例动作：
 
     .. code:: python
 
-        a = (0, 5, 3)        # try local vulnerability "CrackKeepPassX" on node 5
-        a = (1, 5, 7, 1)     # try remote vulnerability "ProbeWindows" from node 5 to node 7
-        a = (2, 5, 7, 3, 2)  # try to connect from node 5 to node 7 using credential 2 over RDP port
+        a = (0, 5, 3)        # 尝试在节点5上使用本地漏洞 "CrackKeepPassX"
+        a = (1, 5, 7, 1)     # 尝试从节点5到节点7使用远程漏洞 "ProbeWindows"
+        a = (2, 5, 7, 3, 2)  # 尝试使用凭证2通过RDP端口从节点5连接到节点7
 
 
-    Observations
-    ------------
+    观察
+    ----
 
-    Observations are graphs of the nodes that have been discovered so far. Each node is annotated
-    with a dict of properties of the form:
+    观察是已发现节点的图形。每个节点都有一个字典，包含以下形式的属性：
 
     .. code:: python
 
         node_properties = {
-            'name': 'FooServer',                         # human-readable identifier
-            'privilege_level': 1,                        # 0: not owned, 1: admin, 2: system
-            'flags': array(-1, 0,  1, 0,  0, ...,  0]),  # 1: set, -1: unset, 0: unknown
-            'credentials': array([-1, 5, -1, ..., -1]),  # array of ports (-1 means no cred)
-            'has_leaked_creds': True,                    # whether node has leaked any credentials so far
+            'name': 'FooServer',                         # 可读的名称
+            'privilege_level': 1,                        # 0: 未拥有, 1: 管理员, 2: 系统
+            'flags': array(-1, 0,  1, 0,  0, ...,  0]),  # 1: 设置, -1: 未设置, 0: 未知
+            'credentials': array([-1, 5, -1, ..., -1]),  # 端口数组 (-1表示没有凭证)
+            'has_leaked_creds': True,                    # 是否有凭证泄露
         }
 
         # flag_ids
@@ -131,9 +133,8 @@ class CyberBattleGraph(gym.Wrapper):
         12: Win10Patched
         13: FLAG:Linux
 
-    Note that the **position** of a non-trivial port number in ``'credentials'`` corresponds to the
-    credential id. Therefore, for the node in the example above, we have a known credential on
-    :code:`port_id=5` with :code:`credential_id=1` (the position in the array).
+    请注意，``'credentials'`` 中非平凡端口号的位置对应于凭证ID。因此，对于上面的节点示例，
+    我们在 :code:`port_id=5` 上有一个已知凭证，凭证ID为 :code:`credential_id=1`（在数组中的位置）。
 
 
     """
@@ -153,25 +154,25 @@ class CyberBattleGraph(gym.Wrapper):
         return self.__graph
 
     def step(self, action: Action):
-        """
+        """ 
 
-        Take a step in the MDP.
+        在MDP中采取一步操作。
 
-        Args:
-            action: An *abstract* action.
+        参数:
+            action: 一个 *抽象* 动作。
 
-        Returns:
-            observation: The next-step observation.
-            reward: The reward associated with the given action (and previous observation).
-            done: Whether the next-step observation is a terminal state.
-            info: Some additional info.
+        返回:
+            observation: 下一步的观察。
+            reward: 与给定动作（和前一步观察）相关的奖励。
+            done: 下一步的观察是否为终止状态。
+            info: 一些附加信息。
 
         """
         kind_id, *indicators = action
         observation, reward, done, info = self.env.step({self.__kinds[kind_id]: indicators})
         for _ in range(observation['newly_discovered_nodes_count']):
             self.__add_node(observation)
-        if True:  # TODO: do we need to update edges and nodes every time?
+        if True:  # TODO: 我们是否需要每次都更新边和节点？
             self.__update_edges(observation)
             self.__update_nodes(observation)
         return self.__graph, reward, done, info
@@ -183,7 +184,7 @@ class CyberBattleGraph(gym.Wrapper):
             self.__graph.add_node(
                 node_index,
                 name=observation['_discovered_nodes'][node_index],
-                privilege_level=None, flags=None,  # these are set by __update_nodes()
+                privilege_level=None, flags=None,  # 这些由 __update_nodes() 设置
                 credentials=creds,
                 has_leaked_creds=False,
             )
@@ -200,15 +201,14 @@ class CyberBattleGraph(gym.Wrapper):
             observation['discovered_nodes_properties'],
         )
         for node_id, (privilege_level, flags) in enumerate(node_properties):
-            # This value is already provided in self.__graph.nodes[node_id]['data'].privilege_level
+            # 这个值已经在 self.__graph.nodes[node_id]['data'].privilege_level 中提供
             self.__graph.nodes[node_id]['privilege_level'] = privilege_level
-            # This value is already provided in self.__graph.nodes[node_id]['data'].properties
+            # 这个值已经在 self.__graph.nodes[node_id]['data'].properties 中提供
             self.__graph.nodes[node_id]['flags'] = flags
 
         for cred_id, (node_id, port_id) in enumerate(observation['credential_cache_matrix']):
             node_id, port_id = int(node_id), int(port_id)
-            # NOTE: this code ignores situations where the same cred_id is
-            # used for two different ports (This can be the case, even on the same node for two different ports.)
+            # 注意：此代码忽略了同一凭证ID用于两个不同端口的情况
             self.__graph.nodes[node_id]['credentials'][cred_id] = port_id
-            # Mark the node has leaking credentials
+            # 标记节点为泄漏凭证
             self.__graph.nodes[node_id]['has_leaked_creds'] = True

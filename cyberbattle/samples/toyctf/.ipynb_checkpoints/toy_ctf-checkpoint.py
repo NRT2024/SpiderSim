@@ -1,5 +1,9 @@
-# Copyright (c) Microsoft Corporation.
-# Licensed under the MIT License.
+# SpiderSim - A Network Attack Simulation Environment
+# Copyright (c) 2024 NRT
+
+# This project includes code modified from CyberBattle 
+# (https://github.com/microsoft/CyberBattleSim/tree/main/cyberbattle) used under Licensed under the MIT License.
+
 
 """Model a toy Capture the flag exercise
 
@@ -57,10 +61,18 @@ nodes = {
                                        credential="monitorBashCreds")]),
                 reward_string="FLAG: SSH history revealed credentials for the monitoring user (monitor)",
                 cost=1.0
-            ))),
+            ),
+            IntoHoneypot = m.VulnerabilityInfo(
+                 description="This is a fake vulnerability connecting to Honeypot",
+                 type=m.VulnerabilityType.REMOTE,
+                 outcome=m.LeakedNodesId(["Honeypot"]),
+                 reward_string = "welcome to Honeypot",
+                 cost=1.0
+             )
+    )),
 
     "Website.Directory": m.NodeInfo(
-        services=[m.ListeningService("HTTPS")],
+        services=[m.ListeningService("HTTPS",allowedCredentials=[])],
         value=1000,
         properties=["Ubuntu", "nginx/1.10.3",
                     "CTFFLAG:Readme.txt-Discover secret data"
@@ -75,15 +87,6 @@ nodes = {
                                        credential="ReusedMySqlCred-web")]),
                 reward_string="Discover browseable web directory: Navigating to parent URL revealed file `readme.txt`"
                               "with secret data (aflag); and `getting-started.txt` with MYSQL credentials",
-                cost=1.0
-            ),
-            NavigateWebDirectory=m.VulnerabilityInfo(
-                description="Discover URL to external sharepoint website "
-                            "(in deprecation-checklist.txt)",
-                type=m.VulnerabilityType.REMOTE,
-                outcome=m.LeakedNodesId(["Sharepoint"]),
-                reward_string="Navigating to parent URL revealed file `deprecation-checklist.txt` containing"
-                              "a URL to an external sharepoint website",
                 cost=1.0
             )
         )),
@@ -111,7 +114,7 @@ nodes = {
                     type=m.VulnerabilityType.LOCAL,
                     outcome=m.LeakedCredentials(credentials=[
                         m.CachedCredential(
-                                node="AzureResourceManager[user=monitor]",
+                                node="AzureResource",
                                 port="HTTPS",
                                 credential="azuread_user_credentials")]),
                     reward_string="SSH: cat ~/azurecreds.txt (running as monitor) revealed Azure user credential!",
@@ -129,20 +132,37 @@ nodes = {
                 type=m.VulnerabilityType.REMOTE,
                 precondition=m.Precondition('SasUrlInCommit&GitHub'),
                 outcome=m.LeakedCredentials(credentials=[
-                    m.CachedCredential(node="AzureStorage",
-                                       port="HTTPS",
-                                       credential="SASTOKEN1")]),
+                             m.CachedCredential(node="AzureStorage",
+                                                     port="HTTPS",
+                                                     credential="SASTOKEN1")]),
                 rates=m.Rates(probingDetectionRate=0.0,
                               exploitDetectionRate=0.0,
                               successRate=1.0),
                 reward_string="CredScan success: Some secure access token (SAS) was leaked in a reverted git commit",
                 cost=1.0
-            ))),
+            )
+         )),
+    'Honeypot':m.NodeInfo( 
+         services=[m.ListeningService("HTTPS")],
+         value=-100,
+         properties=["GitHub", "SasUrlInCommit"],
+         vulnerabilities=dict(#Vulnerability can enter but cannot obtain any output
+             ScanGitHistory=m.VulnerabilityInfo(
+                 description="Some secure access token (SAS) leaked in a reverted git commit",
+                 type=m.VulnerabilityType.REMOTE,
+                 precondition=m.Precondition('SasUrlInCommit&GitHub'),
+                 outcome=m.LeakedCredentials(credentials=[
+                             m.CachedCredential(node="AzureStorage",
+                                                     port="HTTPS",
+                                                     credential="SASTOKEN")]), # error credentials
+                 reward_string="CredScan success: Some secure access token (SAS) was leaked in a reverted git commit",
+                 cost=1.0,))),
+
 
     "AzureStorage": m.NodeInfo(
         services=[
             m.ListeningService("HTTPS", allowedCredentials=["SASTOKEN1"])],
-        value=1000,
+        value=1000, # 50
         properties=["CTFFLAG:LeakedCustomerData"],
         vulnerabilities=dict(
             AccessDataWithSASToken=m.VulnerabilityInfo(
@@ -155,34 +175,10 @@ nodes = {
                 cost=1.0
             )
         )),
-
-    'Sharepoint': m.NodeInfo(
-        services=[m.ListeningService("HTTPS")],
-        value=1000,
-        properties=["SharepointLeakingPassword"],
-        firewall=m.FirewallConfiguration(incoming=[m.FirewallRule("SSH", m.RulePermission.ALLOW),
-                                                   m.FirewallRule("HTTP", m.RulePermission.ALLOW),
-                                                   m.FirewallRule("HTTPS", m.RulePermission.ALLOW)],
-                                         outgoing=[]),
-        vulnerabilities=dict(
-            ScanSharepointParentDirectory=m.VulnerabilityInfo(
-                description="Navigate to SharePoint site, browse parent "
-                            "directory",
-                type=m.VulnerabilityType.REMOTE,
-                outcome=m.LeakedCredentials(credentials=[
-                    m.CachedCredential(node="AzureResourceManager",
-                                       port="HTTPS",
-                                       credential="ADPrincipalCreds")]),
-                rates=m.Rates(successRate=1.0),
-                reward_string="Navigating to the Sharepoint site revealed  AD Service Principal Credentials",
-                cost=1.0)
-        )),
-
-    'AzureResourceManager': m.NodeInfo(
-        services=[m.ListeningService("HTTPS", allowedCredentials=["ADPrincipalCreds", "azuread_user_credentials"])],
-        owned_string="FLAG: Shared credentials with database user - Obtained secrets hidden in Azure Managed Resources",
-        value=1000,
-        properties=["CTFFLAG:LeakedCustomerData2"],
+    'AzureResource': m.NodeInfo(
+        services=[m.ListeningService("HTTPS", allowedCredentials=["azuread_user_credentials"])],
+        owned_string="More secrets stolen when logged as interactive `monitor` user in Azure with `az`",
+        value=1000, # 50
         vulnerabilities=dict(
             ListAzureResources=m.VulnerabilityInfo(
                 description="AzureVM info, including public IP address",
@@ -190,19 +186,14 @@ nodes = {
                 outcome=m.LeakedNodesId(["AzureVM"]),
                 reward_string="Obtained Azure VM and public IP information",
                 cost=1.0
-            ))),
-
-    'AzureResourceManager[user=monitor]': m.NodeInfo(
-        services=[m.ListeningService("HTTPS", allowedCredentials=["azuread_user_credentials"])],
-        owned_string="More secrets stolen when logged as interactive `monitor` user in Azure with `az`",
-        value=1000,
+            )),
         properties=[],
     ),
 
     'AzureVM': m.NodeInfo(
         services=[m.ListeningService("PING"),
                   m.ListeningService("SSH")],
-        value=1000,
+        value=1000, # 100
         properties=["CTFFLAG:VMPRIVATEINFO"],
         firewall=m.FirewallConfiguration(
             incoming=[m.FirewallRule("SSH", m.RulePermission.BLOCK,
@@ -219,22 +210,100 @@ nodes = {
                 outcome=m.LeakedNodesId(["Website"]),
                 reward_string="Web browser history revealed website URL of interest",
                 cost=1.0
+            ),
+            SearchServers = m.VulnerabilityInfo(
+                description="Search servers for list of accessed servers",
+                type=m.VulnerabilityType.LOCAL,
+                outcome=m.LeakedCredentials(credentials=[
+                    m.CachedCredential(node="Servers", port="SSH",
+                         credential="ServersCredential")]),
+                reward_string="Find the entrance to the servers",
+                cost=1.0
+            ),
+            SearchComputeServer = m.VulnerabilityInfo(
+                description="Search ComputeServer for list of accessed servers",
+                type=m.VulnerabilityType.LOCAL,
+                outcome=m.LeakedCredentials(credentials=[
+                    m.CachedCredential(node="ComputeServer", port="SSH",
+                         credential="ServerCredential")]),
+                reward_string="Find the entrance to the ComputeServer",
+                cost=1.0
             )),
         agent_installed=True,
         reimagable=False),
+    'Servers':m.NodeInfo(
+        services=[m.ListeningService("SSH",allowedCredentials=["ServersCredential"])],
+        value=1000,
+        vulnerabilities=dict(
+            SearchSQL=m.VulnerabilityInfo(
+                description="Search server for accessed SQL",
+                type=m.VulnerabilityType.LOCAL,
+                outcome=m.LeakedCredentials(credentials=[
+                    m.CachedCredential(node="SQL", port="SSH",
+                    credential="monitorBashSQL")]),
+                reward_string="Get credential to SQL",
+                cost=1.0
+            ))),
+    'SQL':m.NodeInfo(
+        services=[m.ListeningService("SSH", allowedCredentials=["monitorBashSQL"])],
+        value=1000,
+        vulnerabilities=dict(
+            AccessSQL=m.VulnerabilityInfo(
+                description="SQL database",
+                type=m.VulnerabilityType.LOCAL,
+                outcome=m.CustomerData(),
+                reward_string="Successfully obtained database data",
+                cost=1.0
+            ))),
+
+    'ComputeServer': m.NodeInfo(
+        services=[m.ListeningService("SSH", allowedCredentials=["ServerCredential"])],
+        value=1000,
+        properties=["Linux", "ComputeNode", "GPU"],
+        vulnerabilities=dict(
+            MiningVuln=m.VulnerabilityInfo(
+                description="一个允许劫持算力资源的漏洞",
+                type=m.VulnerabilityType.COMPUTATION_LEAK,
+                precondition=m.Precondition('ComputeNode&GPU'),
+                outcome=m.ComputationResourcesLeaked(
+                    computation_resources=["gpu", "cpu"],
+                    amount=10.0
+                ),
+                reward_string="成功劫持计算资源",
+                cost=2.0,
+            )
+        )
+    ),
 }
 
 global_vulnerability_library: Dict[VulnerabilityID, VulnerabilityInfo] = dict([])
 
+
 # Environment constants
-ENV_IDENTIFIERS = m.infer_constants_from_nodes(
-    cast(Iterator[Tuple[NodeID, NodeInfo]], list(nodes.items())),
-    global_vulnerability_library)
+ENV_IDENTIFIERS = m.infer_constants_from_nodes(cast(Iterator[Tuple[NodeID, NodeInfo]], list(nodes.items())), global_vulnerability_library)
 
 
 def new_environment() -> m.Environment:
+    network_state = m.NetworkState()
+    network_state.computation_resources = {
+        "gpu": m.ComputationResource(
+            id="gpu", 
+            total_amount=100.0, 
+            current_amount=100.0, 
+            value_per_unit=0.5
+        ),
+        "cpu": m.ComputationResource(
+            id="cpu", 
+            total_amount=200.0, 
+            current_amount=200.0, 
+            value_per_unit=0.2
+        )
+    }
+    network_state.hijacked_computation = {}
+    
     return m.Environment(
         network=m.create_network(nodes),
         vulnerability_library=global_vulnerability_library,
-        identifiers=ENV_IDENTIFIERS
+        identifiers=ENV_IDENTIFIERS,
+        network_state=network_state
     )

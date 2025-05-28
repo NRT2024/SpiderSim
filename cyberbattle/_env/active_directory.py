@@ -1,3 +1,10 @@
+# SpiderSim - A Network Attack Simulation Environment
+# Copyright (c) 2024 NRT
+
+# This project includes code modified from CyberBattle 
+# (https://github.com/microsoft/CyberBattleSim/tree/main/cyberbattle) used under Licensed under the MIT License.
+
+
 from ..samples.active_directory import generate_ad
 from . import cyberbattle_env
 from ..samples.active_directory import tiny_ad

@@ -1,7 +1,11 @@
-# Copyright (c) Microsoft Corporation.
-# Licensed under the MIT License.
+# SpiderSim - A Network Attack Simulation Environment
+# Copyright (c) 2024 NRT
 
-"""A discriminated union space for Gym"""
+# This project includes code modified from CyberBattle 
+# (https://github.com/microsoft/CyberBattleSim/tree/main/cyberbattle) used under Licensed under the MIT License.
+
+
+"""Gym的区分联合空间"""
 
 from collections import OrderedDict
 from typing import Mapping, Union, List
@@ -12,9 +16,9 @@ from gym.utils import seeding
 
 class DiscriminatedUnion(spaces.Dict):  # type: ignore
     """
-    A discriminated union of simpler spaces.
+    简单空间的区分联合。
 
-    Example usage:
+    示例用法：
 
     self.observation_space = discriminatedunion.DiscriminatedUnion(
         {"foo": spaces.Discrete(2), "Bar": spaces.Discrete(3)})
@@ -24,7 +28,7 @@ class DiscriminatedUnion(spaces.Dict):  # type: ignore
     def __init__(self,
                  spaces: Union[None, List[spaces.Space], Mapping[str, spaces.Space]] = None,
                  **spaces_kwargs: spaces.Space) -> None:
-        """Create a discriminated union space"""
+        """创建一个区分联合空间"""
         if spaces is None:
             super().__init__(spaces_kwargs)
         else:
@@ -48,12 +52,12 @@ class DiscriminatedUnion(spaces.Dict):  # type: ignore
 
     @classmethod
     def is_of_kind(cls, key: str, sample_n: Mapping[str, object]) -> bool:
-        """Returns true if a given sample is of the specified discriminated kind"""
+        """如果给定的样本属于指定的区分类型，则返回True"""
         return key in sample_n.keys()
 
     @classmethod
     def kind(cls, sample_n: Mapping[str, object]) -> str:
-        """Returns the discriminated kind of a given sample"""
+        """返回给定样本的区分类型"""
         keys = sample_n.keys()
         assert len(keys) == 1
         return list(keys)[0]
@@ -62,7 +66,7 @@ class DiscriminatedUnion(spaces.Dict):  # type: ignore
         return self.spaces[key]
 
     def __repr__(self) -> str:
-        return self.__class__.__name__ + "(" + ", ". join([str(k) + ":" + str(s) for k, s in self.spaces.items()]) + ")"
+        return self.__class__.__name__ + "(" + ", ".join([str(k) + ":" + str(s) for k, s in self.spaces.items()]) + ")"
 
     def to_jsonable(self, sample_n: object) -> object:
         return super().to_jsonable(sample_n)
@@ -77,6 +81,6 @@ class DiscriminatedUnion(spaces.Dict):  # type: ignore
 
 
 def test_sampling() -> None:
-    """Simple sampling test"""
+    """简单的抽样测试"""
     union = DiscriminatedUnion(spaces={"foo": spaces.Discrete(8), "Bar": spaces.Discrete(3)})
     [union.sample() for i in range(100)]

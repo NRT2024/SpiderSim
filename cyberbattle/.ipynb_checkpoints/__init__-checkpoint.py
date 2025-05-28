@@ -8,10 +8,10 @@ from gym.error import Error
 from . import simulation
 from . import agents
 from ._env.cyberbattle_env import AttackerGoal, DefenderGoal
-from .samples.chainpattern import chainpattern
 from .samples.toyctf import toy_ctf
-from .samples.active_directory import generate_ad
-from .simulation import generate_network, model
+from .samples.toyctf import smart_sea
+from .samples.AI_Scene import scene
+from .simulation import model
 
 __all__ = (
     'simulation',
@@ -20,7 +20,7 @@ __all__ = (
 
 
 def register(id: str, cyberbattle_env_identifiers: model.Identifiers, **kwargs):
-    """ same as gym.envs.registry.register, but adds CyberBattle specs to env.spec  """
+    """与 gym.envs.registry.register 相同，但会将 CyberBattle 规格添加到 env.spec"""
     if id in registry.env_specs:
         raise Error('Cannot re-register id: {}'.format(id))
     spec = EnvSpec(id, **kwargs)
@@ -67,57 +67,35 @@ register(
 )
 
 
-if 'CyberBattleRandom-v0' in registry.env_specs:
-    del registry.env_specs['CyberBattleRandom-v0']
+
+if 'CyberBattleSea-v0' in registry.env_specs:
+    del registry.env_specs['CyberBattleSea-v0']
 
 register(
-    id='CyberBattleRandom-v0',
-    cyberbattle_env_identifiers=generate_network.ENV_IDENTIFIERS,
-    entry_point='cyberbattle._env.cyberbattle_random:CyberBattleRandom',
-)
-
-if 'CyberBattleChain-v0' in registry.env_specs:
-    del registry.env_specs['CyberBattleChain-v0']
-
-register(
-    id='CyberBattleChain-v0',
-    cyberbattle_env_identifiers=chainpattern.ENV_IDENTIFIERS,
-    entry_point='cyberbattle._env.cyberbattle_chain:CyberBattleChain',
-    kwargs={'size': 4,
-            'defender_agent': None,
-            'attacker_goal': AttackerGoal(own_atleast_percent=1.0),
+    id='CyberBattleSea-v0',
+    cyberbattle_env_identifiers=smart_sea.ENV_IDENTIFIERS,
+    entry_point='cyberbattle._env.cyberbattle_smartsea:CyberBattleSea',
+    kwargs={'defender_agent': None,
+            'attacker_goal': AttackerGoal(own_atleast=6),
             'defender_goal': DefenderGoal(eviction=True),
-            'winning_reward': 5000.0,
-            'losing_reward': 0.0
+            'maximum_total_credentials': 10,
+            'maximum_node_count': 15
             },
-    reward_threshold=2200,
+    # max_episode_steps=2600,
 )
 
-ad_envs = [f"ActiveDirectory-v{i}" for i in range(0, 10)]
-for (index, env) in enumerate(ad_envs):
-    if env in registry.env_specs:
-        del registry.env_specs[env]
+if 'CyberBattleAI-v0' in registry.env_specs:
+    del registry.env_specs['CyberBattleAI-v0']
 
-    register(
-        id=env,
-        cyberbattle_env_identifiers=generate_ad.ENV_IDENTIFIERS,
-        entry_point='cyberbattle._env.active_directory:CyberBattleActiveDirectory',
-        kwargs={
-            'seed': index,
-            'maximum_discoverable_credentials_per_action': 50000,
-            'maximum_node_count': 30,
-            'maximum_total_credentials': 50000,
-        }
-    )
-
-if 'ActiveDirectoryTiny-v0' in registry.env_specs:
-    del registry.env_specs['ActiveDirectoryTiny-v0']
 register(
-    id='ActiveDirectoryTiny-v0',
-    cyberbattle_env_identifiers=chainpattern.ENV_IDENTIFIERS,
-    entry_point='cyberbattle._env.active_directory:CyberBattleActiveDirectoryTiny',
-    kwargs={'maximum_discoverable_credentials_per_action': 50000,
-            'maximum_node_count': 30,
-            'maximum_total_credentials': 50000
-            }
+    id='CyberBattleAI-v0',
+    cyberbattle_env_identifiers=scene.ENV_IDENTIFIERS,
+    entry_point='cyberbattle._env.cyberbattle_ai:CyberBattleAI',
+    kwargs={'defender_agent': None,
+            'attacker_goal': AttackerGoal(own_atleast=6),
+            'defender_goal': DefenderGoal(eviction=True),
+            'maximum_total_credentials': 20,
+            'maximum_node_count': 30
+            },
+    # max_episode_steps=2600,
 )

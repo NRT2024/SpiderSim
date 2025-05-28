@@ -1,3 +1,7 @@
-# 忽略 env 目录
+# Python
 venv/
+__pycache__/
+*.pyc
 
+# 环境变量文件
+.env

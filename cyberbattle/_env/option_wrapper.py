@@ -1,5 +1,9 @@
-# Copyright (c) Microsoft Corporation.
-# Licensed under the MIT License.
+# SpiderSim - A Network Attack Simulation Environment
+# Copyright (c) 2024 NRT
+
+# This project includes code modified from CyberBattle 
+# (https://github.com/microsoft/CyberBattleSim/tree/main/cyberbattle) used under Licensed under the MIT License.
+
 
 from typing import NamedTuple
 
@@ -47,6 +51,18 @@ class ContextWrapper(gym.Wrapper):
         return self._observation
 
     def step(self, dummy=None):
+        """
+        在MDP中采取一步操作。
+
+        参数:
+            dummy: 目前没有使用的占位参数。
+
+        返回:
+            observation: 下一步的观察。
+            reward: 与给定动作（和前一步观察）相关的奖励。
+            done: 下一步的观察是否为终止状态。
+            info: 一些附加信息。
+        """
         obs = self._observation
         kind = self._options['kind'](obs)
         local_node_id = self._options['local_node_id']((obs, kind))
@@ -69,7 +85,7 @@ class ContextWrapper(gym.Wrapper):
         return self._observation, reward, done, {**info, 'action': a}
 
 
-# --- random option policies --------------------------------------------------------------------- #
+# --- 随机选项策略 --------------------------------------------------------------------- #
 
 def pi_kind(s):
     kinds = ('local_vulnerability', 'remote_vulnerability', 'connect')
