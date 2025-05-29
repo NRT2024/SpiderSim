@@ -3,7 +3,7 @@
 ### 🕷️ **v0.5: Enhanced Threat Simulation & Visualization** *(2025-05-28)*
 
 - Added simulation of **computational power leakage vulnerabilities**.
-- Integrated **experiment data from Beijing No.4 High School.**
+- Several students from Beijing No. 4 High School utilized the SpiderSim platform to design and simulate various security threats and defense strategies within the context of a highly futuristic “Pet Cloning Factory” scenario. The detailed scene descriptions and experimental data have been documented in the file `AI_Scene_Code_Generate\sizhong.txt`
 - Enhanced **attack path visualization.**
 - Improved **AI-generated scenario creation** for higher accuracy and relevance.
 
@@ -61,12 +61,6 @@ Launched the platform with support for evaluating deception-based defense techni
 
    ```
    cp .env.example .env
-   
-   # Example .env content
-   ZHIPU_API_KEY=
-   ZHIPU_BASE_URL="https://open.bigmodel.cn/api/paas/v4/"
-   DEEPSEEK_API_KEY=
-   DEEPSEEK_BASE_URL="https://api.deepseek.com" 
    ```
 
 5. Recommended Python version: **Python 3.10**
@@ -139,7 +133,7 @@ Here are the steps to generate AI-driven industrial digitalization scenarios, us
 
 ### Note
 
-The tutorial above provides instructions on running our DAMO project. For more detailed information about the project, please refer to the [comprehensive tutorial](/doc/detailintro.md). 
+The tutorial above provides instructions on running our DEMO project. For more detailed information about the project, please refer to the [comprehensive tutorial](/doc/detailintro.md). 
 
 ------
 
@@ -150,15 +144,25 @@ The tutorial above provides instructions on running our DAMO project. For more d
 If you wish to reference SpiderSim in your research, please use the following BibTeX entry:
 
 ```
-@inproceedings{hong2023assessing,
-  title={Assessing the Effectiveness of Deception-Based Cyber Defense with CyberBattleSim},
-  author={Hong, Quan and Li, Jiaqi and Guo, Xizhong and Xie, Pan and Zhai, Lidong},
-  booktitle={International Conference on Digital Forensics and Cyber Crime},
-  pages={224--243},
-  year={2023},
-  organization={Springer}
+@inproceedings{li2022space,
+  title={Space spider: a hyper large scientific infrastructure based on digital twin for the space internet},
+  author={Li, Jiaqi and Zhang, Lvyang and Hong, Quan and Yu, Yang and Zhai, Lidong},
+  booktitle={Proceedings of the 1st Workshop on Digital Twin \& Edge AI for Industrial IoT},
+  pages={31--36},
+  year={2022}
+}
+
+@misc{li2025posterspidersimmultiagentdriven,
+      title={Poster: SpiderSim: Multi-Agent Driven Theoretical Cybersecurity Simulation for Industrial Digitalization}, 
+      author={Jiaqi Li and Xizhong Guo and Yang Zhao and Lvyang Zhang and Lidong Zhai},
+      year={2025},
+      eprint={2502.13778},
+      archivePrefix={arXiv},
+      primaryClass={cs.CR},
+      url={https://arxiv.org/abs/2502.13778}, 
 }
 ```
+
 
 ------
 
@@ -190,4 +194,4 @@ Thank you for helping us improve SpiderSim!
 If you need assistance, feel free to contact us through the following channels:
 
 - Open an issue on the GitHub Issues page.
-- Send an email to guoxizhong@iie.ac.cn.
+- Send an email to spidersimnrt@gmail.com.
